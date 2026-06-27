@@ -195,14 +195,12 @@ PAL_DebugOverlay(
 // Debug menu
 // ============================================================
 
-#define DEBUG_MENU_ITEMS 8
+#define DEBUG_MENU_ITEMS 6
 
 static const WCHAR g_rgDebugMenuLabels[DEBUG_MENU_ITEMS][3] = {
    { 0x5C0B, 0x8E64, 0 },  // 尋蹤
    { 0x6C23, 0x51DD, 0 },  // 氣凝 (pawn/sell)
    { 0x85CF, 0x771F, 0 },  // 藏真 (random shop)
-   { 0x795E, 0x6388, 0 },  // 神授
-   { 0x9032, 0x5BF6, 0 },  // 進寶
    { 0x4FE0, 0x5F71, 0 },  // 俠影
    { 0x8A66, 0x7149, 0 },  // 試煉
    { 0x5916, 0x5178, 0 },  // 外典
@@ -744,11 +742,7 @@ PAL_DebugMenu(
                fDone = TRUE;
             }
             break;
-            case 3: // 神授
-               break;
-            case 4: // 進寶
-               break;
-            case 5: // 俠影 (party edit)
+            case 3: // 俠影 (party edit)
             {
                VIDEO_RestoreScreen(gpScreen);
                VIDEO_UpdateScreen(NULL);
@@ -756,7 +750,7 @@ PAL_DebugMenu(
                fDone = TRUE;
             }
             break;
-            case 6: // 試煉 (start battle)
+            case 4: // 試煉 (start battle)
             {
                VIDEO_RestoreScreen(gpScreen);
                VIDEO_UpdateScreen(NULL);
@@ -764,7 +758,7 @@ PAL_DebugMenu(
                fDone = TRUE;
             }
             break;
-            case 7: // 外典
+            case 5: // 外典
             {
                VIDEO_RestoreScreen(gpScreen);
                VIDEO_UpdateScreen(NULL);
