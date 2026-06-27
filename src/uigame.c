@@ -604,7 +604,7 @@ PAL_InGameMagicMenu(
    //
    // Draw the player info boxes
    //
-   y = 45;
+   y = (gpGlobals->wMaxPartyMemberIndex >= 3) ? 10 : 45;
 
    for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
    {
@@ -688,7 +688,7 @@ PAL_InGameMagicMenu(
             //
             // Redraw the player info boxes first
             //
-            y = 45;
+            y = (gpGlobals->wMaxPartyMemberIndex >= 3) ? 10 : 45;
 
             for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
             {
@@ -778,7 +778,7 @@ PAL_InGameMagicMenu(
       //
       // Redraw the player info boxes
       //
-      y = 45;
+      y = (gpGlobals->wMaxPartyMemberIndex >= 3) ? 10 : 45;
 
       for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
       {
@@ -1269,27 +1269,30 @@ PAL_ItemUseMenu(
       //
       // Draw the box
       //
-      PAL_CreateBox(PAL_XY(110, 2), 7, 9, 0, FALSE);
+      PAL_CreateBox(PAL_XY(110, 2), 8, 9, 0, FALSE);
 
       //
       // Draw the stats of the selected player
       //
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_LEVEL), PAL_XY(200, 16),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_HP), PAL_XY(200, 34),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_MP), PAL_XY(200, 52),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_ATTACKPOWER), PAL_XY(200, 70),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_MAGICPOWER), PAL_XY(200, 88),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_RESISTANCE), PAL_XY(200, 106),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_DEXTERITY), PAL_XY(200, 124),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
-      PAL_DrawText(PAL_GetWord(STATUS_LABEL_FLEERATE), PAL_XY(200, 142),
-         ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+      {
+         int j = 0;
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_LEVEL), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_HP), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_MP), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_ATTACKPOWER), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_MAGICPOWER), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_RESISTANCE), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_DEXTERITY), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+         PAL_DrawText(PAL_GetWord(STATUS_LABEL_FLEERATE), PAL_XY(200, 16 + 18 * j++),
+            ITEMUSEMENU_COLOR_STATLABEL, TRUE, FALSE, FALSE);
+      }
 
       i = gpGlobals->rgParty[wSelectedPlayer].wPlayerRole;
 
@@ -1340,7 +1343,7 @@ PAL_ItemUseMenu(
       }
 
       PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_ITEMBOX), gpScreen,
-         PAL_XY(120, 80));
+         PAL_XY(120, 100));
 
       i = PAL_GetItemAmount(wItemToUse);
 
@@ -1352,14 +1355,14 @@ PAL_ItemUseMenu(
          if (PAL_MKFReadChunk(bufImage, 2048,
             gpGlobals->g.rgObject[wItemToUse].item.wBitmap, gpGlobals->f.fpBALL) > 0)
          {
-            PAL_RLEBlitToSurface(bufImage, gpScreen, PAL_XY(127, 88));
+            PAL_RLEBlitToSurface(bufImage, gpScreen, PAL_XY(127, 108));
          }
 
          //
          // Draw the amount and label of the item
          //
-         PAL_DrawText(PAL_GetWord(wItemToUse), PAL_XY(116, 143), STATUS_COLOR_EQUIPMENT, TRUE, FALSE, FALSE);
-         PAL_DrawNumber(i, 2, PAL_XY(170, 133), kNumColorCyan, kNumAlignRight);
+         PAL_DrawText(PAL_GetWord(wItemToUse), PAL_XY(116, 163), STATUS_COLOR_EQUIPMENT, TRUE, FALSE, FALSE);
+         PAL_DrawNumber(i, 2, PAL_XY(170, 153), kNumColorCyan, kNumAlignRight);
       }
 
       //
@@ -1436,6 +1439,81 @@ PAL_ItemUseMenu(
    }
 
    return MENUITEM_VALUE_CANCELLED;
+}
+
+UINT
+PAL_AmountSelect(
+   UINT        uiMax
+)
+{
+   INT iAmount = 1;
+   INT iMax = (INT)uiMax;
+
+   if (uiMax == 0) return 0;
+   if (iAmount > iMax) iAmount = iMax;
+
+   VIDEO_BackupScreen(gpScreen);
+   PAL_ClearKeyState();
+
+   while (TRUE)
+   {
+      VIDEO_RestoreScreen(gpScreen);
+
+      PAL_CreateSingleLineBox(PAL_XY(110, 100), 6, FALSE);
+
+      {
+         const WCHAR wszLabel[] = { 0x6578, 0x91CF, 0 }; // 數量
+         PAL_DrawText(wszLabel, PAL_XY(124, 110), 0, FALSE, FALSE, FALSE);
+      }
+
+      PAL_DrawNumber((UINT)iAmount, 2, PAL_XY(166, 114), kNumColorYellow, kNumAlignRight);
+      PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_SLASH),
+         gpScreen, PAL_XY(178, 114));
+      PAL_DrawNumber(uiMax, 2, PAL_XY(184, 114), kNumColorCyan, kNumAlignRight);
+
+      VIDEO_UpdateScreen(NULL);
+
+      PAL_ClearKeyState();
+      while (TRUE)
+      {
+         UTIL_Delay(1);
+         if (g_InputState.dwKeyPress & kKeyUp)
+         {
+            iAmount++;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyDown)
+         {
+            iAmount--;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyRight)
+         {
+            iAmount += 10;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyLeft)
+         {
+            iAmount -= 10;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeySearch)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            return (UINT)iAmount;
+         }
+         else if (g_InputState.dwKeyPress & kKeyMenu)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            return 0;
+         }
+      }
+
+      if (iAmount < 1) iAmount = 1;
+      if (iAmount > iMax) iAmount = iMax;
+   }
 }
 
 static VOID
@@ -1581,15 +1659,23 @@ PAL_BuyMenu(
          break;
       }
 
-      if (gpGlobals->g.rgObject[w].item.wPrice <= gpGlobals->dwCash)
       {
-         if (PAL_ConfirmMenu())
+         WORD wPrice = gpGlobals->g.rgObject[w].item.wPrice;
+         if (wPrice > 0 && wPrice <= gpGlobals->dwCash)
          {
-            //
-            // Player bought an item
-            //
-            gpGlobals->dwCash -= gpGlobals->g.rgObject[w].item.wPrice;
-            PAL_AddItemToInventory(w, 1);
+            UINT uiOwned = PAL_GetItemAmount(w);
+            UINT uiRoom = (uiOwned >= 99) ? 0 : 99 - uiOwned;
+            UINT uiAffordable = gpGlobals->dwCash / wPrice;
+            UINT uiMax = (uiRoom < uiAffordable) ? uiRoom : uiAffordable;
+            if (uiMax > 0)
+            {
+               UINT uiQty = PAL_AmountSelect(uiMax);
+               if (uiQty > 0 && PAL_ConfirmMenu())
+               {
+                  gpGlobals->dwCash -= wPrice * uiQty;
+                  PAL_AddItemToInventory(w, (INT)uiQty);
+               }
+            }
          }
       }
 
@@ -1677,11 +1763,20 @@ PAL_SellMenu(
          break;
       }
 
-      if (PAL_ConfirmMenu())
       {
-         if (PAL_AddItemToInventory(w, -1))
+         UINT uiOwned = PAL_GetItemAmount(w);
+         if (uiOwned > 0)
          {
-            gpGlobals->dwCash += gpGlobals->g.rgObject[w].item.wPrice / 2;
+            UINT uiQty = PAL_AmountSelect(uiOwned);
+            if (uiQty > 0 && PAL_ConfirmMenu())
+            {
+               UINT k;
+               for (k = 0; k < uiQty; k++)
+               {
+                  if (!PAL_AddItemToInventory(w, -1)) break;
+               }
+               gpGlobals->dwCash += gpGlobals->g.rgObject[w].item.wPrice / 2 * k;
+            }
          }
       }
    }

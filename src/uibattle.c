@@ -331,8 +331,8 @@ PAL_BattleUIDrawMiscMenu(
 
       if (rgMenuItem[i].wNumWord == BATTLEUI_LABEL_ENEMYINFO)
       {
-         PAL_DrawSmallText("\xe6\x83\x85\xe5\xa0\xb1",
-            gpScreen, rgMenuItem[i].pos, bColor);  // 情報
+         static const WCHAR wszInfo[] = { 0x60C5, 0x5831, 0 }; // 情報
+         PAL_DrawText(wszInfo, rgMenuItem[i].pos, bColor, TRUE, FALSE, FALSE);
       }
       else
       {
@@ -753,22 +753,31 @@ PAL_EnemyStatus(
       }
 
       //
-      // Draw labels with PAL_DrawSmallText (UTF-8)
+      // Draw labels with shadows
       //
-      PAL_DrawSmallText("\xe7\xb6\x93\xe9\xa9\x97\xe5\x80\xbc",
-         gpScreen, PAL_XY(x_lbl, y0 + 0 * h), MENUITEM_COLOR);        // 經驗值
-      PAL_DrawSmallText("\xe4\xbf\xae\xe8\xa1\x8c",
-         gpScreen, PAL_XY(x_lbl, y0 + 1 * h), MENUITEM_COLOR);        // 修行
-      PAL_DrawSmallText("\xe9\xab\x94\xe5\x8a\x9b",
-         gpScreen, PAL_XY(x_lbl, y0 + 2 * h), MENUITEM_COLOR);        // 體力
-      PAL_DrawSmallText("\xe5\xb7\xab\xe6\x8a\x97",
-         gpScreen, PAL_XY(x_lbl, y0 + 3 * h), MENUITEM_COLOR);        // 巫抗
-      PAL_DrawSmallText("\xe5\xa6\x96\xe5\x8a\x9b",
-         gpScreen, PAL_XY(x_lbl, y0 + 4 * h), MENUITEM_COLOR);        // 妖力
-      PAL_DrawSmallText("\xe5\x81\xb7\xe7\xab\x8a",
-         gpScreen, PAL_XY(x_lbl, y0 + 5 * h), MENUITEM_COLOR);        // 偷竊
-      PAL_DrawSmallText("\xe6\x94\xbb\xe6\x93\x8a\xe6\x95\x88\xe6\x9e\x9c",
-         gpScreen, PAL_XY(x_lbl, y0 + 6 * h), MENUITEM_COLOR);        // 攻擊效果
+      #define DRAW_LABEL(text, x, y, color) do { \
+         PAL_DrawSmallText((text), gpScreen, PAL_XY((x)+1, (y)+1), 0); \
+         PAL_DrawSmallText((text), gpScreen, PAL_XY((x), (y)), (color)); \
+      } while(0)
+
+      DRAW_LABEL("\xe7\xb6\x93\xe9\xa9\x97\xe5\x80\xbc", x_lbl, y0 + 0*h, MENUITEM_COLOR); // 經驗值
+      DRAW_LABEL("\xe4\xbf\xae\xe8\xa1\x8c",             x_lbl, y0 + 1*h, MENUITEM_COLOR); // 修行
+      DRAW_LABEL("\xe9\xab\x94\xe5\x8a\x9b",             x_lbl, y0 + 2*h, MENUITEM_COLOR); // 體力
+      DRAW_LABEL("\xe5\xb7\xab\xe6\x8a\x97",             x_lbl, y0 + 3*h, MENUITEM_COLOR); // 巫抗
+      DRAW_LABEL("\xe5\xa6\x96\xe5\x8a\x9b",             x_lbl, y0 + 4*h, MENUITEM_COLOR); // 妖力
+      DRAW_LABEL("\xe5\x81\xb7\xe7\xab\x8a",             x_lbl, y0 + 5*h, MENUITEM_COLOR); // 偷竊
+      DRAW_LABEL("\xe6\x94\xbb\xe6\x93\x8a\xe6\x95\x88\xe6\x9e\x9c", x_lbl, y0 + 6*h, MENUITEM_COLOR); // 攻擊效果
+      // Element header: 風/雷/水/火/土/劍/毒
+      {
+         const char *elems[] = {
+            "\xe9\xa2\xa8", "\xe9\x9b\xb7", "\xe6\xb0\xb4",
+            "\xe7\x81\xab", "\xe5\x9c\x9f", "\xe5\x8a\x8d", "\xe6\xaf\x92"
+         };
+         for (int e = 0; e < 7; e++)
+         {
+            DRAW_LABEL(elems[e], x_lbl + e * 16, y0 + 9*h, MENUITEM_COLOR);
+         }
+      }
 
       //
       // Draw numeric values
@@ -822,12 +831,14 @@ PAL_EnemyStatus(
       }
 
       //
-      // Element resistance row
+      // Element resistance row (with color coding)
       //
       for (col = 0; col < NUM_MAGIC_ELEMENTAL + 2; col++)
       {
          int cell_x = x_lbl + col * 16;
+         int elem_y = y0 + 4 + 10 * h;
          int def_v = 0;
+         NUMCOLOREX numColor;
 
          if (col < NUM_MAGIC_ELEMENTAL)
          {
@@ -847,8 +858,11 @@ PAL_EnemyStatus(
 
          if (def_v < 0) def_v = 0;
 
-         PAL_DrawNumber((UINT)def_v, 2,
-            PAL_XY(cell_x, y0 + 4 + 10 * h), kNumColorYellow, kNumAlignRight);
+         numColor = (def_v >= 6) ? kNumColorExCyan : (def_v <= 3) ? kNumColorExRed : kNumColorExYellow;
+         PAL_DrawNumberEx((UINT)def_v, 2,
+            PAL_XY(cell_x, elem_y), numColor, kNumAlignMid);
+         PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_SLASH),
+            gpScreen, PAL_XY(cell_x + 11, elem_y));
       }
 
       //
@@ -858,10 +872,19 @@ PAL_EnemyStatus(
       PAL_DrawNumber(be->e.wCash, 6, PAL_XY(40, 185), kNumColorYellow, kNumAlignRight);
 
       //
-      // Enemy name
+      // Bottom debug line: accumulated EXP + battlefield BG number
+      //
+      DRAW_LABEL("\xe7\xb4\xaf\xe7\xa9\x8d\xe7\xb6\x93\xe9\xa9\x97", 150, 186, MENUITEM_COLOR); // 累積經驗
+      PAL_DrawNumberEx(g_Battle.iExpGained, 5, PAL_XY(206, 190), kNumColorExPale, kNumAlignLeft);
+      DRAW_LABEL("\xe6\x88\xb0\xe5\xa0\xb4", 256, 186, MENUITEM_COLOR); // 戰場
+      PAL_DrawNumberEx(gpGlobals->wNumBattleField, 2, PAL_XY(308, 190), kNumColorExPurple, kNumAlignRight);
+
+      //
+      // Enemy name + slot index
       //
       PAL_DrawText(PAL_GetWord(be->wObjectID), PAL_XY(20, 6),
          MENUITEM_COLOR_CONFIRMED, TRUE, FALSE, FALSE);
+      PAL_DrawNumber(iCurrent + 1, 1, PAL_XY(10, 11), kNumColorYellow, kNumAlignRight);
 
       //
       // Active poisons on the enemy

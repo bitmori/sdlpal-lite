@@ -198,14 +198,16 @@ PAL_DebugOverlay(
 // Debug menu
 // ============================================================
 
-#define DEBUG_MENU_ITEMS 6
+#define DEBUG_MENU_ITEMS 8
 
 static const WCHAR g_rgDebugMenuLabels[DEBUG_MENU_ITEMS][3] = {
    { 0x5C0B, 0x8E64, 0 },  // 尋蹤
-   { 0x9032, 0x5BF6, 0 },  // 進寶
+   { 0x6C23, 0x51DD, 0 },  // 氣凝 (pawn/sell)
+   { 0x85CF, 0x771F, 0 },  // 藏真 (random shop)
    { 0x795E, 0x6388, 0 },  // 神授
+   { 0x9032, 0x5BF6, 0 },  // 進寶
    { 0x4FE0, 0x5F71, 0 },  // 俠影
-   { 0x7149, 0x6230, 0 },  // 煉戰
+   { 0x8A66, 0x7149, 0 },  // 試煉
    { 0x5916, 0x5178, 0 },  // 外典
 };
 
@@ -283,6 +285,264 @@ PAL_DebugTraceSubmenu(
    }
 }
 
+static INT
+DEBUG_PlayerSlot(
+   WORD   wRole
+)
+{
+   int i;
+   for (i = 0; i <= (int)gpGlobals->wMaxPartyMemberIndex; i++)
+   {
+      if (gpGlobals->rgParty[i].wPlayerRole == wRole) return i;
+   }
+   return -1;
+}
+
+static void
+DEBUG_TogglePartyMember(
+   WORD   wRole
+)
+{
+   INT slot = DEBUG_PlayerSlot(wRole);
+   if (slot >= 0)
+   {
+      if (gpGlobals->wMaxPartyMemberIndex == 0) return;
+      for (int i = slot; i < (int)gpGlobals->wMaxPartyMemberIndex; i++)
+      {
+         gpGlobals->rgParty[i] = gpGlobals->rgParty[i + 1];
+      }
+      gpGlobals->wMaxPartyMemberIndex--;
+   }
+   else
+   {
+      if (gpGlobals->wMaxPartyMemberIndex + 1 >= MAX_PLAYERS_IN_PARTY) return;
+      gpGlobals->wMaxPartyMemberIndex++;
+      memset(&gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex], 0, sizeof(gpGlobals->rgParty[0]));
+      gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex].wPlayerRole = wRole;
+   }
+}
+
+static void
+PAL_DebugPartyEdit(
+   VOID
+)
+{
+   int iCurrent = 0;
+
+   VIDEO_BackupScreen(gpScreen);
+
+   while (TRUE)
+   {
+      int i;
+      VIDEO_RestoreScreen(gpScreen);
+
+      PAL_CreateBox(PAL_XY(20, 30), MAX_PLAYER_ROLES - 1, 11, 1, FALSE);
+
+      for (i = 0; i < MAX_PLAYER_ROLES; i++)
+      {
+         int x = 40, y = 48 + i * 18;
+         BYTE bColor = (i == iCurrent) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+         INT slot = DEBUG_PlayerSlot((WORD)i);
+
+         PAL_DrawText(PAL_GetWord(gpGlobals->g.PlayerRoles.rgwName[i]),
+            PAL_XY(x, y), bColor, TRUE, FALSE, FALSE);
+
+         if (slot >= 0)
+         {
+            PAL_DrawNumber((UINT)(slot + 1), 1, PAL_XY(x + 80, y + 4), kNumColorYellow, kNumAlignRight);
+         }
+
+         PAL_DrawNumber(gpGlobals->g.PlayerRoles.rgwSpriteNum[i], 4,
+            PAL_XY(x + 145, y + 4), kNumColorCyan, kNumAlignRight);
+      }
+
+      VIDEO_UpdateScreen(NULL);
+
+      PAL_ClearKeyState();
+      while (TRUE)
+      {
+         UTIL_Delay(1);
+         if (g_InputState.dwKeyPress & kKeyUp)
+         {
+            iCurrent--;
+            if (iCurrent < 0) iCurrent = MAX_PLAYER_ROLES - 1;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyDown)
+         {
+            iCurrent++;
+            if (iCurrent >= MAX_PLAYER_ROLES) iCurrent = 0;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyLeft)
+         {
+            gpGlobals->g.PlayerRoles.rgwSpriteNum[iCurrent]--;
+            PAL_SetLoadFlags(kLoadPlayerSprite);
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyRight)
+         {
+            gpGlobals->g.PlayerRoles.rgwSpriteNum[iCurrent]++;
+            PAL_SetLoadFlags(kLoadPlayerSprite);
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeySearch)
+         {
+            DEBUG_TogglePartyMember((WORD)iCurrent);
+            PAL_SetLoadFlags(kLoadPlayerSprite);
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyMenu)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            PAL_SetLoadFlags(kLoadPlayerSprite);
+            return;
+         }
+      }
+   }
+}
+
+static void
+PAL_DebugStartBattle(
+   VOID
+)
+{
+   #define TEAMS_PER_LINE   3
+   #define LINES_PER_PAGE   7
+   #define TEAM_TEXT_WIDTH  100
+
+   WORD rgTeamIds[4096];
+   int nTeams = 0;
+   int iCurrent = 0;
+   int i, j, k;
+
+   for (i = 1; i < gpGlobals->g.nEnemyTeam; i++)
+   {
+      if (gpGlobals->g.lprgEnemyTeam[i].rgwEnemy[0] != 0 &&
+          gpGlobals->g.lprgEnemyTeam[i].rgwEnemy[0] != 0xFFFF)
+      {
+         if (nTeams < 4096) rgTeamIds[nTeams++] = (WORD)i;
+      }
+   }
+
+   if (nTeams == 0) return;
+
+   VIDEO_BackupScreen(gpScreen);
+
+   while (TRUE)
+   {
+      VIDEO_RestoreScreen(gpScreen);
+
+      PAL_CreateBox(PAL_XY(2, 0), LINES_PER_PAGE - 1, 17, 1, FALSE);
+
+      int iStart = (iCurrent / TEAMS_PER_LINE) * TEAMS_PER_LINE - TEAMS_PER_LINE * (LINES_PER_PAGE / 2);
+      if (iStart < 0) iStart = 0;
+
+      i = iStart;
+      for (j = 0; j < LINES_PER_PAGE && i < nTeams; j++)
+      {
+         for (k = 0; k < TEAMS_PER_LINE && i < nTeams; k++, i++)
+         {
+            WORD wTeamId = rgTeamIds[i];
+            BYTE bColor = (i == iCurrent) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+            int x = 15 + k * TEAM_TEXT_WIDTH;
+            int y = 12 + j * 18;
+
+            WORD wLeader = gpGlobals->g.lprgEnemyTeam[wTeamId].rgwEnemy[0];
+            if (wLeader != 0)
+            {
+               PAL_DrawText(PAL_GetWord(wLeader), PAL_XY(x, y), bColor, TRUE, FALSE, FALSE);
+            }
+            PAL_DrawNumber(wTeamId, 3, PAL_XY(x + 72, y + 4), kNumColorCyan, kNumAlignRight);
+         }
+      }
+
+      //
+      // Show composition of the highlighted team at the bottom
+      //
+      {
+         WORD wTeamId = rgTeamIds[iCurrent];
+         int slot, col = 0, row = 0;
+         static const WCHAR wszSummon[] = { 0x53EC, 0x559A, 0 }; // 召喚
+         for (slot = 0; slot < MAX_ENEMIES_IN_TEAM; slot++)
+         {
+            WORD wEnemy = gpGlobals->g.lprgEnemyTeam[wTeamId].rgwEnemy[slot];
+            if (wEnemy == 0xFFFF) continue;
+            int sx = 15 + col * 96;
+            int sy = 158 + row * 18;
+            if (wEnemy == 0)
+               PAL_DrawText(wszSummon, PAL_XY(sx, sy), MENUITEM_COLOR, TRUE, FALSE, FALSE);
+            else
+               PAL_DrawText(PAL_GetWord(wEnemy), PAL_XY(sx, sy), 0x3C, TRUE, FALSE, FALSE);
+            col++;
+            if (col >= 3) { col = 0; row++; }
+         }
+      }
+
+      VIDEO_UpdateScreen(NULL);
+
+      PAL_ClearKeyState();
+      while (TRUE)
+      {
+         UTIL_Delay(1);
+         if (g_InputState.dwKeyPress & kKeyUp)
+         {
+            iCurrent -= TEAMS_PER_LINE;
+            if (iCurrent < 0) iCurrent = 0;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyDown)
+         {
+            iCurrent += TEAMS_PER_LINE;
+            if (iCurrent >= nTeams) iCurrent = nTeams - 1;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyLeft)
+         {
+            iCurrent--;
+            if (iCurrent < 0) iCurrent = 0;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyRight)
+         {
+            iCurrent++;
+            if (iCurrent >= nTeams) iCurrent = nTeams - 1;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyPgUp)
+         {
+            iCurrent -= TEAMS_PER_LINE * LINES_PER_PAGE;
+            if (iCurrent < 0) iCurrent = 0;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyPgDn)
+         {
+            iCurrent += TEAMS_PER_LINE * LINES_PER_PAGE;
+            if (iCurrent >= nTeams) iCurrent = nTeams - 1;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeySearch)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            PAL_StartBattle(rgTeamIds[iCurrent], FALSE);
+            return;
+         }
+         else if (g_InputState.dwKeyPress & kKeyMenu)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            return;
+         }
+      }
+   }
+
+   #undef TEAMS_PER_LINE
+   #undef LINES_PER_PAGE
+   #undef TEAM_TEXT_WIDTH
+}
+
 VOID
 PAL_DebugMenu(
    VOID
@@ -336,16 +596,56 @@ PAL_DebugMenu(
                PAL_DebugTraceSubmenu();
                fDone = TRUE;
                break;
-            case 1: // 進寶
-               gpGlobals->dwCash += 10000;
+            case 1: // 氣凝 (pawn/sell)
+               VIDEO_RestoreScreen(gpScreen);
+               VIDEO_UpdateScreen(NULL);
+               PAL_SellMenu();
+               fDone = TRUE;
                break;
-            case 2: // 神授
+            case 2: // 藏真 (random shop)
+            {
+               int nStores = gpGlobals->g.nStore;
+               if (nStores > 0)
+               {
+                  int attempts = 0;
+                  gpGlobals->dwCash += 10000;
+                  while (attempts < 64)
+                  {
+                     int idx = RandomLong(0, nStores - 1);
+                     if (gpGlobals->g.lprgStore[idx].rgwItems[0] != 0)
+                     {
+                        VIDEO_RestoreScreen(gpScreen);
+                        VIDEO_UpdateScreen(NULL);
+                        PAL_BuyMenu((WORD)idx);
+                        break;
+                     }
+                     attempts++;
+                  }
+               }
+               fDone = TRUE;
+            }
+            break;
+            case 3: // 神授
                break;
-            case 3: // 俠影
+            case 4: // 進寶
                break;
-            case 4: // 煉戰
-               break;
-            case 5: // 外典
+            case 5: // 俠影 (party edit)
+            {
+               VIDEO_RestoreScreen(gpScreen);
+               VIDEO_UpdateScreen(NULL);
+               PAL_DebugPartyEdit();
+               fDone = TRUE;
+            }
+            break;
+            case 6: // 試煉 (start battle)
+            {
+               VIDEO_RestoreScreen(gpScreen);
+               VIDEO_UpdateScreen(NULL);
+               PAL_DebugStartBattle();
+               fDone = TRUE;
+            }
+            break;
+            case 7: // 外典
                break;
             }
             break;

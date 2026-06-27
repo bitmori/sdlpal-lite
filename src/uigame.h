@@ -53,6 +53,11 @@ PAL_ConfirmMenu(
    VOID
 );
 
+UINT
+PAL_AmountSelect(
+   UINT        uiMax
+);
+
 BOOL
 PAL_SwitchMenu(
    BOOL      fEnabled
