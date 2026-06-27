@@ -28,6 +28,20 @@
 
 #include "ascii.h"
 
+#ifdef _WIN32
+static char *strcasestr(const char *haystack, const char *needle)
+{
+   size_t nlen = strlen(needle);
+   if (nlen == 0) return (char *)haystack;
+   for (; *haystack; haystack++)
+   {
+      if (_strnicmp(haystack, needle, nlen) == 0)
+         return (char *)haystack;
+   }
+   return NULL;
+}
+#endif
+
 #define FONT_TABLE_SIZE  0x10000
 
 static int _font_height = 16;
