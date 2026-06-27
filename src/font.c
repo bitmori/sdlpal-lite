@@ -776,7 +776,21 @@ PAL_DrawSmallText(
 )
 {
 	int x = PAL_X(pos), y = PAL_Y(pos);
+	const char *p;
+	int cx;
 	if (pszText == NULL || lpSurface == NULL) return;
+
+	// Shadow pass
+	p = pszText; cx = x;
+	while (*p)
+	{
+		uint32_t cp = PAL_DecodeUTF8(&p);
+		if (cp >= FONT_TABLE_SIZE) continue;
+		PAL_DrawSmallCharOnSurface((uint16_t)cp, lpSurface, PAL_XY(cx + 1, y + 1), 0);
+		cx += PAL_SmallCharWidth((uint16_t)cp);
+	}
+
+	// Foreground pass
 	while (*pszText)
 	{
 		uint32_t cp = PAL_DecodeUTF8(&pszText);

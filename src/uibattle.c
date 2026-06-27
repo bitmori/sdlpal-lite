@@ -755,10 +755,8 @@ PAL_EnemyStatus(
       //
       // Draw labels with shadows
       //
-      #define DRAW_LABEL(text, x, y, color) do { \
-         PAL_DrawSmallText((text), gpScreen, PAL_XY((x)+1, (y)+1), 0); \
-         PAL_DrawSmallText((text), gpScreen, PAL_XY((x), (y)), (color)); \
-      } while(0)
+      #define DRAW_LABEL(text, x, y, color) \
+         PAL_DrawSmallText((text), gpScreen, PAL_XY((x), (y)), (color))
 
       DRAW_LABEL("\xe7\xb6\x93\xe9\xa9\x97\xe5\x80\xbc", x_lbl, y0 + 0*h, MENUITEM_COLOR); // 經驗值
       DRAW_LABEL("\xe4\xbf\xae\xe8\xa1\x8c",             x_lbl, y0 + 1*h, MENUITEM_COLOR); // 修行

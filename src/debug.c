@@ -134,7 +134,6 @@ DEBUG_DrawEventObjects(
       DEBUG_DrawRect(sx - 6, sy - 8, 13, 13, color);
 
       sprintf(buf, "%d", i);
-      PAL_DrawSmallText(buf, gpScreen, PAL_XY(sx - 5, sy - 19), 0x00);
       PAL_DrawSmallText(buf, gpScreen, PAL_XY(sx - 6, sy - 20), 0xFF);
    }
 
@@ -161,11 +160,9 @@ DEBUG_DrawStatusLine(
    if (dir > 3) dir = 4;
 
    sprintf(buf, "SCN=%d MAP=%d XY=(%d,%d) D=%s", gpGlobals->wNumScene, wMapNum, wx, wy, dirs[dir]);
-   PAL_DrawSmallText(buf, gpScreen, PAL_XY(3, 3), 0x00);
    PAL_DrawSmallText(buf, gpScreen, PAL_XY(2, 2), 0xFF);
 
    sprintf(buf, "TILE=(%d,%d)", wx / 32, wy / 16);
-   PAL_DrawSmallText(buf, gpScreen, PAL_XY(3, 15), 0x00);
    PAL_DrawSmallText(buf, gpScreen, PAL_XY(2, 14), 0xFF);
 }
 
