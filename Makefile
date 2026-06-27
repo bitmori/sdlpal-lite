@@ -5,11 +5,12 @@ TARGET = sdlpal
 BUILDDIR = build
 
 HOST =
+PLATFORM = unix
 
 DEPFLAGS = -MT $@ -MMD -MP -MF $(BUILDDIR)/$*.Td
 
 CFILES = $(wildcard $(SRCDIR)/adplug/*.c) $(wildcard $(SRCDIR)/*.c)
-CPPFILES = $(wildcard $(SRCDIR)/adplug/*.cpp) $(wildcard $(SRCDIR)/*.cpp) $(SRCDIR)/unix/unix.cpp
+CPPFILES = $(wildcard $(SRCDIR)/adplug/*.cpp) $(wildcard $(SRCDIR)/*.cpp) $(SRCDIR)/$(PLATFORM)/$(PLATFORM).cpp
 OBJFILES = $(addprefix $(BUILDDIR)/, $(notdir $(CFILES:.c=.o) $(CPPFILES:.cpp=.o)))
 DEPFILES = $(OBJFILES:.o=.d)
 SDL_CONFIG = sdl2-config
@@ -17,7 +18,7 @@ SDL_CONFIG = sdl2-config
 CC = $(HOST)gcc
 CXX = $(HOST)g++
 CCFLAGS = `$(SDL_CONFIG) --cflags` -g -Wall -O2 -fno-strict-aliasing \
-	-I$(SRCDIR)/unix -I$(SRCDIR) -DPAL_HAS_PLATFORM_SPECIFIC_UTILS
+	-I$(SRCDIR)/$(PLATFORM) -I$(SRCDIR) -DPAL_HAS_PLATFORM_SPECIFIC_UTILS
 CXXFLAGS = $(CCFLAGS) -std=c++11
 CFLAGS = $(CCFLAGS) -std=gnu99
 LDFLAGS = `$(SDL_CONFIG) --libs` -lm -pthread
@@ -55,7 +56,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp $(BUILDDIR)/%.d | $(BUILDDIR)
 	@$(CXX) $(DEPFLAGS) $(CXXFLAGS) -c $< -o $@
 	$(POSTCOMPILE)
 
-$(BUILDDIR)/%.o: $(SRCDIR)/unix/%.cpp $(BUILDDIR)/%.d | $(BUILDDIR)
+$(BUILDDIR)/%.o: $(SRCDIR)/$(PLATFORM)/%.cpp $(BUILDDIR)/%.d | $(BUILDDIR)
 	@echo [CC] $<
 	@$(CXX) $(DEPFLAGS) $(CXXFLAGS) -c $< -o $@
 	$(POSTCOMPILE)

@@ -42,7 +42,7 @@ jobs:
             mingw-w64-x86_64-SDL2
             make
       - name: Build
-        run: make
+        run: make PLATFORM=win32
       - name: Bundle
         run: |
           mkdir -p dist
