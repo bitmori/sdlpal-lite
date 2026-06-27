@@ -256,7 +256,7 @@ PAL_BattleUIIsActionValid(
       {
          w = gpGlobals->rgParty[i].wPlayerRole;
 
-         if (gpGlobals->g.PlayerRoles.rgwHP[w] < gpGlobals->g.PlayerRoles.rgwMaxHP[w] / 5 ||
+         if (PAL_IsPlayerDying(w) ||
             gpGlobals->rgPlayerStatus[w][kStatusSleep] != 0 ||
             gpGlobals->rgPlayerStatus[w][kStatusConfused] != 0 ||
             gpGlobals->rgPlayerStatus[w][kStatusSilence] != 0)
@@ -1588,6 +1588,11 @@ PAL_BattleUIUpdate(
       if (y == 1)
       {
          g_Battle.UI.wPrevEnemyTarget = (WORD)x;
+         for (i = 0; i < MAX_ENEMIES_IN_TEAM; i++)
+            if (g_Battle.rgEnemy[i].wObjectID != 0)
+               break;
+         if (i < MAX_ENEMIES_IN_TEAM)
+            g_Battle.UI.wSelectedIndex = i;
          PAL_BattleCommitAction(FALSE);
          break;
       }

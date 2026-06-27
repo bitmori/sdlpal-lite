@@ -728,6 +728,18 @@ PAL_SaveGame(
 }
 
 VOID
+PAL_ReloadInNextTick(
+   INT           iSaveSlot
+)
+{
+   gpGlobals->bCurrentSaveSlot = (BYTE)iSaveSlot;
+   PAL_SetLoadFlags(kLoadGlobalData | kLoadScene | kLoadPlayerSprite);
+   gpGlobals->fEnteringScene = TRUE;
+   gpGlobals->fNeedToFadeIn = TRUE;
+   gpGlobals->dwFrameNum = 0;
+}
+
+VOID
 PAL_InitGameData(
    INT         iSaveSlot
 )
@@ -761,8 +773,6 @@ PAL_InitGameData(
       PAL_LoadDefaultGame();
    }
 
-   gpGlobals->fGameStart = TRUE;
-   gpGlobals->fNeedToFadeIn = FALSE;
    gpGlobals->iCurInvMenuItem = 0;
    gpGlobals->fInBattle = FALSE;
 
@@ -1232,7 +1242,7 @@ PAL_AddPoisonForPlayer(
    {
       gpGlobals->rgPoisonStatus[i][index].wPoisonID = wPoisonID;
       gpGlobals->rgPoisonStatus[i][index].wPoisonScript =
-         gpGlobals->g.rgObject[wPoisonID].poison.wPlayerScript;
+		  PAL_RunTriggerScript(gpGlobals->g.rgObject[wPoisonID].poison.wPlayerScript, wPlayerRole);
    }
 }
 

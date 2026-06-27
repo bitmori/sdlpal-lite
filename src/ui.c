@@ -433,6 +433,7 @@ PAL_ReadMenu(
    int               i;
    WORD              wCurrentItem    = (wDefaultItem < nMenuItem) ? wDefaultItem : 0;
 
+   g_bRenderPaused = TRUE;
    //
    // Draw all the menu texts.
    //
@@ -454,6 +455,8 @@ PAL_ReadMenu(
 
       PAL_DrawText(PAL_GetWord(rgMenuItem[i].wNumWord), rgMenuItem[i].pos, bColor, TRUE, TRUE, FALSE);
    }
+   g_bRenderPaused = FALSE;
+   VIDEO_UpdateScreen(NULL);
 
    if (lpfnMenuItemChanged != NULL)
    {
@@ -477,6 +480,7 @@ PAL_ReadMenu(
 
       if (g_InputState.dwKeyPress & (kKeyDown | kKeyRight))
       {
+         g_bRenderPaused = TRUE;
          //
          // User pressed the down or right arrow key
          //
@@ -514,6 +518,8 @@ PAL_ReadMenu(
             PAL_DrawText(PAL_GetWord(rgMenuItem[wCurrentItem].wNumWord),
                rgMenuItem[wCurrentItem].pos, MENUITEM_COLOR_SELECTED_INACTIVE, FALSE, TRUE, FALSE);
          }
+         g_bRenderPaused = FALSE;
+         VIDEO_UpdateScreen(NULL);
 
          if (lpfnMenuItemChanged != NULL)
          {
@@ -522,6 +528,7 @@ PAL_ReadMenu(
       }
       else if (g_InputState.dwKeyPress & (kKeyUp | kKeyLeft))
       {
+         g_bRenderPaused = TRUE;
          //
          // User pressed the up or left arrow key
          //
@@ -561,6 +568,8 @@ PAL_ReadMenu(
             PAL_DrawText(PAL_GetWord(rgMenuItem[wCurrentItem].wNumWord),
                rgMenuItem[wCurrentItem].pos, MENUITEM_COLOR_SELECTED_INACTIVE, FALSE, TRUE, FALSE);
          }
+         g_bRenderPaused = FALSE;
+         VIDEO_UpdateScreen(NULL);
 
          if (lpfnMenuItemChanged != NULL)
          {

@@ -1289,6 +1289,7 @@ PAL_ShowDialogText(
          rect.y = PAL_Y(pos);
          rect.w = 320 - rect.x * 2 + 32;
          rect.h = 64;
+         VIDEO_UpdateScreen(&rect);
 
          //
          // Show the text on the screen
@@ -1398,13 +1399,12 @@ PAL_ShowDialogText(
 
             case '~':
                //
-               // Delay for a period and quit
+               // Delay for a period and quit (skip delay in dialog mode)
                //
                if (g_TextLib.fUserSkip)
                {
                   VIDEO_UpdateScreen(NULL);
                }
-               UTIL_Delay(wcstol(lpszText + 1, NULL, 10) * 80 / 7);
 			   g_TextLib.nCurrentDialogLine = 0;
                g_TextLib.fUserSkip = FALSE;
                return; // don't go further
@@ -1433,7 +1433,7 @@ PAL_ShowDialogText(
 			   text[1] = 0;
 
 			   // Update the screen on each draw operation is time-consuming, so disable it if user want to skip
-               PAL_DrawText(text, PAL_XY(x, y), g_TextLib.bCurrentFontColor, TRUE, !g_TextLib.fUserSkip, FALSE);
+               PAL_DrawText(text, PAL_XY(x, y), g_TextLib.bCurrentFontColor, TRUE, FALSE, FALSE);
 			   x += PAL_CharWidth(text[0]);
 
                if (!g_TextLib.fUserSkip)

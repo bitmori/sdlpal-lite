@@ -24,7 +24,7 @@
 #include "global.h"
 #include "palcfg.h"
 
-BYTE
+PAL_FORCE_INLINE BYTE
 PAL_CalcShadowColor(
    BYTE bSourceColor
 )
@@ -162,12 +162,20 @@ PAL_RLEBlitOne(
    }
    else
    {
-      UINT i, j;
+      UINT i, j, k, sx;
       INT  x, y;
       BYTE T;
       BOOL bShadow = (flags & RLE_BLIT_SHADOW) ? TRUE : FALSE;
+      UINT uiSrcX = 0;
+      LPBYTE p;
 
       bMonoColor &= 0xF0;
+
+      if ((INT)uiWidth + dx <= 0 || dx >= lpDstSurface->w ||
+          (INT)uiHeight + dy <= 0 || dy >= lpDstSurface->h)
+      {
+         return 0;
+      }
 
       for (i = 0; i < uiLen;)
       {
@@ -175,48 +183,114 @@ PAL_RLEBlitOne(
          if ((T & 0x80) && T <= 0x80 + uiWidth)
          {
             i += T - 0x80;
+            uiSrcX += T - 0x80;
+            if (uiSrcX >= uiWidth)
+            {
+               uiSrcX -= uiWidth;
+               dy++;
+            }
          }
          else
          {
-            for (j = 0; j < T; j++)
+            j = 0;
+            sx = uiSrcX;
+            x = dx + uiSrcX;
+            y = dy;
+
+            if (y < 0)
             {
-               y = (i + j) / uiWidth + dy;
-               x = (i + j) % uiWidth + dx;
+               j += -y * uiWidth;
+               y = 0;
+            }
+            else if (y >= lpDstSurface->h)
+            {
+               goto end;
+            }
 
-               if (x < 0) { j += -x - 1; continue; }
-               else if (x >= lpDstSurface->w) { j += x - lpDstSurface->w; continue; }
-               if (y < 0) { j += -y * uiWidth - 1; continue; }
-               else if (y >= lpDstSurface->h) { goto end; }
+            while (j < T)
+            {
+               if (x < 0)
+               {
+                  j += -x;
+                  if (j >= T) break;
+                  sx += -x;
+                  x = 0;
+               }
+               else if (x >= lpDstSurface->w)
+               {
+                  j += uiWidth - sx;
+                  x -= sx;
+                  sx = 0;
+                  y++;
+                  if (y >= lpDstSurface->h) goto end;
+                  continue;
+               }
 
-               LPBYTE dst = &((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x];
+               k = T - j;
+               if ((UINT)(lpDstSurface->w - x) < k) k = lpDstSurface->w - x;
+               if (uiWidth - sx < k) k = uiWidth - sx;
+               sx += k;
+               p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
 
                if (bShadow)
                {
-                  *dst = PAL_CalcShadowColor(*dst);
+                  UINT n = k;
+                  j += n;
+                  for (; n != 0; n--)
+                  {
+                     p[x] = PAL_CalcShadowColor(p[x]);
+                     x++;
+                  }
                }
                else if (bMonoColor)
                {
-                  BYTE b = lpBitmapRLE[j] & 0x0F;
-                  if ((INT)b + iColorShift > 0x0F) b = 0x0F;
-                  else if ((INT)b + iColorShift < 0) b = 0;
-                  else b += iColorShift;
-                  *dst = b | bMonoColor;
+                  for (; k != 0; k--)
+                  {
+                     BYTE b = lpBitmapRLE[j] & 0x0F;
+                     if ((INT)b + iColorShift > 0x0F) b = 0x0F;
+                     else if ((INT)b + iColorShift < 0) b = 0;
+                     else b += iColorShift;
+                     p[x] = b | bMonoColor;
+                     j++; x++;
+                  }
                }
                else if (iColorShift)
                {
-                  BYTE b = lpBitmapRLE[j] & 0x0F;
-                  if ((INT)b + iColorShift > 0x0F) b = 0x0F;
-                  else if ((INT)b + iColorShift < 0) b = 0;
-                  else b += iColorShift;
-                  *dst = b | (lpBitmapRLE[j] & 0xF0);
+                  for (; k != 0; k--)
+                  {
+                     BYTE b = lpBitmapRLE[j] & 0x0F;
+                     if ((INT)b + iColorShift > 0x0F) b = 0x0F;
+                     else if ((INT)b + iColorShift < 0) b = 0;
+                     else b += iColorShift;
+                     p[x] = b | (lpBitmapRLE[j] & 0xF0);
+                     j++; x++;
+                  }
                }
                else
                {
-                  *dst = lpBitmapRLE[j];
+                  for (; k != 0; k--)
+                  {
+                     p[x] = lpBitmapRLE[j];
+                     j++; x++;
+                  }
+               }
+
+               if (sx >= uiWidth)
+               {
+                  sx -= uiWidth;
+                  x -= uiWidth;
+                  y++;
+                  if (y >= lpDstSurface->h) goto end;
                }
             }
             lpBitmapRLE += T;
             i += T;
+            uiSrcX += T;
+            while (uiSrcX >= uiWidth)
+            {
+               uiSrcX -= uiWidth;
+               dy++;
+            }
          }
       }
    end:;
