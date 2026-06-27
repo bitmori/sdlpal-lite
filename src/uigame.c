@@ -116,25 +116,6 @@ PAL_OpeningMenu(
    // Draw the background
    //
    PAL_DrawOpeningMenuBackground();
-
-   {
-      const WCHAR title[] = { 0x4ED9, 0x528D, 0x5947, 0x4FA0, 0x50B3, 0 };
-      const WCHAR sub[]   = { 0x5B57, 0x4F53, 0x6E2C, 0x8A66, 0x002D,
-                              0x0053, 0x006D, 0x0061, 0x006C, 0x006C, 0x0020,
-                              0x0046, 0x006F, 0x006E, 0x0074, 0 };
-      int x = 108;
-      const WCHAR *p;
-      for (p = title; *p; p++) {
-         PAL_DrawSmallCharOnSurface(*p, gpScreen, PAL_XY(x, 3), 44);
-         x += PAL_SmallCharWidth(*p);
-      }
-      x = 95;
-      for (p = sub; *p; p++) {
-         PAL_DrawSmallCharOnSurface(*p, gpScreen, PAL_XY(x, 17), 44);
-         x += PAL_SmallCharWidth(*p);
-      }
-   }
-
    PAL_FadeIn(0, FALSE, 1);
 
    while (TRUE)

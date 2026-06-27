@@ -25,7 +25,7 @@
 
 volatile PALINPUTSTATE   g_InputState;
 #if PAL_HAS_JOYSTICKS
-static SDL_Joystick     *g_pJoy = NULL;
+static SDL_GameController *g_pController = NULL;
 #endif
 
 #if !SDL_VERSION_ATLEAST(2,0,0)
@@ -89,7 +89,8 @@ static const int g_KeyMap[][2] = {
    { SDLK_q,         kKeyFlee },
    { SDLK_f,         kKeyForce },
    { SDLK_s,         kKeyStatus },
-   { SDLK_z,         kKeyInfo }
+   { SDLK_z,         kKeyInfo },
+   { SDLK_BACKQUOTE,  kKeyDebug }
 };
 
 static VOID
@@ -526,105 +527,102 @@ PAL_JoystickEventFilter(
 #if PAL_HAS_JOYSTICKS
    switch (lpEvent->type)
    {
-   case SDL_JOYAXISMOTION:
-      g_InputState.joystickNeedUpdate = TRUE;
-      //
-      // Moved an axis on joystick
-      //
-      switch (lpEvent->jaxis.axis)
+   case SDL_CONTROLLERBUTTONDOWN:
+      switch (lpEvent->cbutton.button)
       {
-      case 0:
-         //
-         // X axis
-         //
-         if (lpEvent->jaxis.value > 3200)
-         {
-            g_InputState.axisX = 1;
-         }
-         else if (lpEvent->jaxis.value < -3200)
-         {
-            g_InputState.axisX = -1;
-         }
-         else
-         {
-            g_InputState.axisX = 0;
-         }
+      case SDL_CONTROLLER_BUTTON_A:
+         g_InputState.dwKeyPress |= kKeySearch;
          break;
-
-      case 1:
-         //
-         // Y axis
-         //
-         if (lpEvent->jaxis.value > 3200)
-         {
-            g_InputState.axisY = 1;
-         }
-         else if (lpEvent->jaxis.value < -3200)
-         {
-            g_InputState.axisY = -1;
-         }
-         else
-         {
-            g_InputState.axisY = 0;
-         }
-         break;
-      }
-      break;
-
-   case SDL_JOYHATMOTION:
-      //
-      // Pressed the joystick hat button
-      //
-      switch (lpEvent->jhat.value)
-      {
-         case SDL_HAT_LEFT:
-         case SDL_HAT_LEFTUP:
-            g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
-            g_InputState.dir = kDirWest;
-            g_InputState.dwKeyPress = kKeyLeft;
-            break;
-
-         case SDL_HAT_RIGHT:
-         case SDL_HAT_RIGHTDOWN:
-            g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
-            g_InputState.dir = kDirEast;
-            g_InputState.dwKeyPress = kKeyRight;
-            break;
-
-         case SDL_HAT_UP:
-         case SDL_HAT_RIGHTUP:
-            g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
-            g_InputState.dir = kDirNorth;
-            g_InputState.dwKeyPress = kKeyUp;
-            break;
-
-         case SDL_HAT_DOWN:
-         case SDL_HAT_LEFTDOWN:
-            g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
-            g_InputState.dir = kDirSouth;
-            g_InputState.dwKeyPress = kKeyDown;
-            break;
-
-         case SDL_HAT_CENTERED:
-            g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
-            g_InputState.dir = kDirUnknown;
-            g_InputState.dwKeyPress = kKeyNone;
-            break;
-      }
-      break;
-
-   case SDL_JOYBUTTONDOWN:
-      //
-      // Pressed the joystick button
-      //
-      switch (lpEvent->jbutton.button & 1)
-      {
-      case 0:
+      case SDL_CONTROLLER_BUTTON_B:
          g_InputState.dwKeyPress |= kKeyMenu;
          break;
+      case SDL_CONTROLLER_BUTTON_X:
+         g_InputState.dwKeyPress |= kKeyDefend;
+         break;
+      case SDL_CONTROLLER_BUTTON_Y:
+         g_InputState.dwKeyPress |= kKeyUseItem;
+         break;
+      case SDL_CONTROLLER_BUTTON_START:
+         g_InputState.dwKeyPress |= kKeyStatus;
+         break;
+      case SDL_CONTROLLER_BUTTON_BACK:
+         g_InputState.dwKeyPress |= kKeyInfo;
+         break;
+      case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+         g_InputState.dwKeyPress |= kKeyPgUp;
+         break;
+      case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+         g_InputState.dwKeyPress |= kKeyPgDn;
+         break;
+      case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+         g_InputState.dwKeyPress |= kKeyDebug;
+         break;
+      case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+         g_InputState.dwKeyPress |= kKeyFlee;
+         break;
+      case SDL_CONTROLLER_BUTTON_DPAD_UP:
+         g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
+         g_InputState.dir = kDirNorth;
+         g_InputState.dwKeyPress |= kKeyUp;
+         break;
+      case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+         g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
+         g_InputState.dir = kDirSouth;
+         g_InputState.dwKeyPress |= kKeyDown;
+         break;
+      case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+         g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
+         g_InputState.dir = kDirWest;
+         g_InputState.dwKeyPress |= kKeyLeft;
+         break;
+      case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+         g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
+         g_InputState.dir = kDirEast;
+         g_InputState.dwKeyPress |= kKeyRight;
+         break;
+      }
+      break;
 
-      case 1:
-         g_InputState.dwKeyPress |= kKeySearch;
+   case SDL_CONTROLLERBUTTONUP:
+      switch (lpEvent->cbutton.button)
+      {
+      case SDL_CONTROLLER_BUTTON_DPAD_UP:
+      case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+      case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+      case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+         g_InputState.prevdir = (gpGlobals->fInBattle ? kDirUnknown : g_InputState.dir);
+         g_InputState.dir = kDirUnknown;
+         break;
+      }
+      break;
+
+   case SDL_CONTROLLERAXISMOTION:
+      g_InputState.joystickNeedUpdate = TRUE;
+      switch (lpEvent->caxis.axis)
+      {
+      case SDL_CONTROLLER_AXIS_LEFTX:
+         if (lpEvent->caxis.value > 8000)
+            g_InputState.axisX = 1;
+         else if (lpEvent->caxis.value < -8000)
+            g_InputState.axisX = -1;
+         else
+            g_InputState.axisX = 0;
+         break;
+      case SDL_CONTROLLER_AXIS_LEFTY:
+         if (lpEvent->caxis.value > 8000)
+            g_InputState.axisY = 1;
+         else if (lpEvent->caxis.value < -8000)
+            g_InputState.axisY = -1;
+         else
+            g_InputState.axisY = 0;
+         break;
+      case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+         if (lpEvent->caxis.value > 8000)
+            g_InputState.dwKeyPress |= kKeyThrowItem;
+         break;
+      case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+         if (lpEvent->caxis.value > 8000)
+            g_InputState.dwKeyPress |= kKeyRepeat;
          break;
       }
       break;
@@ -1088,21 +1086,12 @@ PAL_InitInput(
    // Check for joystick
    //
 #if PAL_HAS_JOYSTICKS
-   if (SDL_NumJoysticks() > 0 && g_fUseJoystick)
+   for (int i = 0; i < SDL_NumJoysticks(); i++)
    {
-      int i;
-	  for (i = 0; i < SDL_NumJoysticks(); i++)
+      if (SDL_IsGameController(i))
       {
-         if (PAL_IS_VALID_JOYSTICK(SDL_JoystickNameForIndex(i)))
-         {
-            g_pJoy = SDL_JoystickOpen(i);
-            break;
-         }
-      }
-
-      if (g_pJoy != NULL)
-      {
-         SDL_JoystickEventState(SDL_ENABLE);
+         g_pController = SDL_GameControllerOpen(i);
+         if (g_pController != NULL) break;
       }
    }
 #endif
@@ -1130,10 +1119,10 @@ PAL_ShutdownInput(
 --*/
 {
 #if PAL_HAS_JOYSTICKS
-   if (g_pJoy != NULL)
+   if (g_pController != NULL)
    {
-      SDL_JoystickClose(g_pJoy);
-      g_pJoy = NULL;
+      SDL_GameControllerClose(g_pController);
+      g_pController = NULL;
    }
 #endif
    input_shutdown_filter();

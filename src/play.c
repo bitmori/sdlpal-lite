@@ -523,6 +523,7 @@ PAL_StartFrame(
    // Update the scene
    //
    PAL_MakeScene();
+   PAL_DebugOverlay();
    VIDEO_UpdateScreen(NULL);
 
    if (g_InputState.dwKeyPress & kKeyMenu)
@@ -566,6 +567,13 @@ PAL_StartFrame(
       // Show the player status (info key)
       //
       PAL_PlayerStatus();
+   }
+   else if (g_InputState.dwKeyPress & kKeyDebug)
+   {
+      //
+      // Show the debug menu
+      //
+      PAL_DebugMenu();
    }
    else if (g_InputState.dwKeyPress & kKeySearch)
    {

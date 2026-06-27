@@ -50,6 +50,7 @@
 #include "fight.h"
 #include "play.h"
 #include "game.h"
+#include "debug.h"
 
 VOID
 PAL_Shutdown(

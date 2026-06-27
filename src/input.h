@@ -58,6 +58,7 @@ enum PALKEY
    kKeyHome        = (1 << 16),
    kKeyEnd         = (1 << 17),
    kKeyInfo        = (1 << 18),
+   kKeyDebug       = (1 << 19),
 };
 
 PAL_C_LINKAGE_BEGIN
