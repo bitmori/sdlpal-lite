@@ -132,8 +132,28 @@ PAL_LoadHacks(
 
          p++;
          while (*p == ' ' || *p == '\t') p++;
-         strncpy(g_rgHacks[iCurrent].szName, p, MAX_NAME_LEN - 1);
-         g_rgHacks[iCurrent].szName[MAX_NAME_LEN - 1] = '\0';
+
+         // Truncate name to 6 visible characters (UTF-8 aware)
+         {
+            const char *src = p;
+            int nChars = 0;
+            size_t byteLen = 0;
+            while (*src && nChars < 6)
+            {
+               unsigned char c = (unsigned char)*src;
+               int n;
+               if (c < 0x80) n = 1;
+               else if ((c & 0xE0) == 0xC0) n = 2;
+               else if ((c & 0xF0) == 0xE0) n = 3;
+               else n = 4;
+               src += n;
+               byteLen += n;
+               nChars++;
+            }
+            if (byteLen >= MAX_NAME_LEN) byteLen = MAX_NAME_LEN - 1;
+            memcpy(g_rgHacks[iCurrent].szName, p, byteLen);
+            g_rgHacks[iCurrent].szName[byteLen] = '\0';
+         }
       }
       else if (*p == '!')
       {

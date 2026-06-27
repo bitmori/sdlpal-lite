@@ -548,65 +548,121 @@ PAL_DebugHackMenu(
    VOID
 )
 {
+   #define HACK_ITEMS_PER_LINE  3
+   #define HACK_LINES_PER_PAGE  5
+   #define HACK_ITEM_WIDTH      87
+   #define HACK_BOX_X           10
+   #define HACK_BOX_Y           42
+   #define HACK_ITEM_X0         35
+   #define HACK_ITEM_Y0         54
+   #define HACK_ROW_H           18
+
    int nHacks = PAL_GetHackCount();
-   int i, iCurrent = 0;
+   int iCurrent = 0;
+   int i, j, k, item_delta;
+   DWORD dwTime;
 
    if (nHacks == 0) return;
 
    VIDEO_BackupScreen(gpScreen);
+   PAL_ClearKeyState();
+   dwTime = SDL_GetTicks();
 
    while (TRUE)
    {
-      VIDEO_RestoreScreen(gpScreen);
+      item_delta = 0;
 
-      PAL_CreateBox(PAL_XY(60, 40), nHacks < 8 ? nHacks - 1 : 7, 8, 1, FALSE);
-
-      for (i = 0; i < nHacks && i < 8; i++)
+      if (g_InputState.dwKeyPress & kKeyUp)
+         item_delta = -HACK_ITEMS_PER_LINE;
+      else if (g_InputState.dwKeyPress & kKeyDown)
+         item_delta = HACK_ITEMS_PER_LINE;
+      else if (g_InputState.dwKeyPress & kKeyLeft)
+         item_delta = -1;
+      else if (g_InputState.dwKeyPress & kKeyRight)
+         item_delta = 1;
+      else if (g_InputState.dwKeyPress & kKeyPgUp)
+         item_delta = -(HACK_ITEMS_PER_LINE * HACK_LINES_PER_PAGE);
+      else if (g_InputState.dwKeyPress & kKeyPgDn)
+         item_delta = HACK_ITEMS_PER_LINE * HACK_LINES_PER_PAGE;
+      else if (g_InputState.dwKeyPress & kKeyMenu)
+         break;
+      else if (g_InputState.dwKeyPress & kKeySearch)
       {
-         BYTE bColor = (i == iCurrent) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
-         PAL_DrawSmallText(PAL_GetHackName(i), gpScreen,
-            PAL_XY(75, 52 + i * 16), bColor);
+         PAL_ExecuteHack(iCurrent);
+         break;
       }
 
+      if (iCurrent + item_delta >= 0 && iCurrent + item_delta < nHacks)
+         iCurrent += item_delta;
+
+      VIDEO_RestoreScreen(gpScreen);
+
+      PAL_CreateBoxWithShadow(PAL_XY(HACK_BOX_X, HACK_BOX_Y),
+         HACK_LINES_PER_PAGE - 1, 16, 1, FALSE, 0);
+
+      // Cash box (top-left)
+      PAL_CreateSingleLineBox(PAL_XY(0, 0), 5, FALSE);
+      PAL_DrawText(PAL_GetWord(CASH_LABEL), PAL_XY(10, 10), 0, FALSE, FALSE, FALSE);
+      PAL_DrawNumber(gpGlobals->dwCash, 6, PAL_XY(49, 14), kNumColorYellow, kNumAlignRight);
+
+      // Grid of hack names
+      i = iCurrent / HACK_ITEMS_PER_LINE * HACK_ITEMS_PER_LINE
+         - HACK_ITEMS_PER_LINE * (HACK_LINES_PER_PAGE / 2);
+      if (i < 0) i = 0;
+
+      for (j = 0; j < HACK_LINES_PER_PAGE; j++)
+      {
+         for (k = 0; k < HACK_ITEMS_PER_LINE; k++)
+         {
+            if (i >= nHacks) { j = HACK_LINES_PER_PAGE; break; }
+
+            BYTE bColor = (i == iCurrent) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+            int px = HACK_ITEM_X0 + k * HACK_ITEM_WIDTH;
+            int py = HACK_ITEM_Y0 + j * HACK_ROW_H;
+
+            PAL_DrawSmallText(PAL_GetHackName(i), gpScreen, PAL_XY(px, py), bColor);
+
+            if (i == iCurrent)
+            {
+               PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
+                  gpScreen, PAL_XY(px + 25, py + 10));
+            }
+            i++;
+         }
+      }
+
+      // Description panel (top-right area)
       {
          LPCSTR pszDesc = PAL_GetHackDesc(iCurrent);
          if (pszDesc != NULL)
          {
-            PAL_DrawSmallText(pszDesc, gpScreen, PAL_XY(75, 52 + (nHacks < 8 ? nHacks : 8) * 16 + 8), 0x2E);
+            PAL_DrawObjectDesc(pszDesc, gpScreen, 102, 3, 0x3C);
          }
       }
 
       VIDEO_UpdateScreen(NULL);
       PAL_ClearKeyState();
 
-      while (TRUE)
+      while (!SDL_TICKS_PASSED(SDL_GetTicks(), dwTime))
       {
          PAL_ProcessEvent();
          if (g_InputState.dwKeyPress != 0) break;
          SDL_Delay(5);
       }
-
-      if (g_InputState.dwKeyPress & kKeyUp)
-      {
-         iCurrent = (iCurrent > 0) ? iCurrent - 1 : nHacks - 1;
-      }
-      else if (g_InputState.dwKeyPress & kKeyDown)
-      {
-         iCurrent = (iCurrent < nHacks - 1) ? iCurrent + 1 : 0;
-      }
-      else if (g_InputState.dwKeyPress & kKeySearch)
-      {
-         PAL_ExecuteHack(iCurrent);
-         break;
-      }
-      else if (g_InputState.dwKeyPress & kKeyMenu)
-      {
-         break;
-      }
+      dwTime = SDL_GetTicks() + FRAME_TIME;
    }
 
    VIDEO_RestoreScreen(gpScreen);
    VIDEO_UpdateScreen(NULL);
+
+   #undef HACK_ITEMS_PER_LINE
+   #undef HACK_LINES_PER_PAGE
+   #undef HACK_ITEM_WIDTH
+   #undef HACK_BOX_X
+   #undef HACK_BOX_Y
+   #undef HACK_ITEM_X0
+   #undef HACK_ITEM_Y0
+   #undef HACK_ROW_H
 }
 
 VOID
