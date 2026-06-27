@@ -98,6 +98,7 @@ PAL_Init(
    }
 
    PAL_LoadObjectDesc();
+   PAL_LoadHacks();
 
    PAL_InitInput();
    PAL_InitResources();

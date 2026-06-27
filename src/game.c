@@ -99,6 +99,7 @@ PAL_GameMain(
       if (gpGlobals->fGameStart)
       {
          PAL_GameStart();
+         PAL_ExecuteAutoHacks();
          gpGlobals->fGameStart = FALSE;
       }
 

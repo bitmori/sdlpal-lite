@@ -543,6 +543,72 @@ PAL_DebugStartBattle(
    #undef TEAM_TEXT_WIDTH
 }
 
+static VOID
+PAL_DebugHackMenu(
+   VOID
+)
+{
+   int nHacks = PAL_GetHackCount();
+   int i, iCurrent = 0;
+
+   if (nHacks == 0) return;
+
+   VIDEO_BackupScreen(gpScreen);
+
+   while (TRUE)
+   {
+      VIDEO_RestoreScreen(gpScreen);
+
+      PAL_CreateBox(PAL_XY(60, 40), nHacks < 8 ? nHacks - 1 : 7, 8, 1, FALSE);
+
+      for (i = 0; i < nHacks && i < 8; i++)
+      {
+         BYTE bColor = (i == iCurrent) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+         PAL_DrawSmallText(PAL_GetHackName(i), gpScreen,
+            PAL_XY(75, 52 + i * 16), bColor);
+      }
+
+      {
+         LPCSTR pszDesc = PAL_GetHackDesc(iCurrent);
+         if (pszDesc != NULL)
+         {
+            PAL_DrawSmallText(pszDesc, gpScreen, PAL_XY(75, 52 + (nHacks < 8 ? nHacks : 8) * 16 + 8), 0x2E);
+         }
+      }
+
+      VIDEO_UpdateScreen(NULL);
+      PAL_ClearKeyState();
+
+      while (TRUE)
+      {
+         PAL_ProcessEvent();
+         if (g_InputState.dwKeyPress != 0) break;
+         SDL_Delay(5);
+      }
+
+      if (g_InputState.dwKeyPress & kKeyUp)
+      {
+         iCurrent = (iCurrent > 0) ? iCurrent - 1 : nHacks - 1;
+      }
+      else if (g_InputState.dwKeyPress & kKeyDown)
+      {
+         iCurrent = (iCurrent < nHacks - 1) ? iCurrent + 1 : 0;
+      }
+      else if (g_InputState.dwKeyPress & kKeySearch)
+      {
+         PAL_ExecuteHack(iCurrent);
+         break;
+      }
+      else if (g_InputState.dwKeyPress & kKeyMenu)
+      {
+         break;
+      }
+   }
+
+   VIDEO_RestoreScreen(gpScreen);
+   VIDEO_UpdateScreen(NULL);
+}
+
 VOID
 PAL_DebugMenu(
    VOID
@@ -646,7 +712,13 @@ PAL_DebugMenu(
             }
             break;
             case 7: // 外典
-               break;
+            {
+               VIDEO_RestoreScreen(gpScreen);
+               VIDEO_UpdateScreen(NULL);
+               PAL_DebugHackMenu();
+               fDone = TRUE;
+            }
+            break;
             }
             break;
          }

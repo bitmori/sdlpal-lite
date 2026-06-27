@@ -52,6 +52,7 @@
 #include "game.h"
 #include "debug.h"
 #include "objectdesc.h"
+#include "hack.h"
 
 VOID
 PAL_Shutdown(
