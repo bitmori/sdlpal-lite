@@ -450,6 +450,12 @@ PAL_DebugStartBattle(
                PAL_DrawText(PAL_GetWord(wLeader), PAL_XY(x, y), bColor, TRUE, FALSE, FALSE);
             }
             PAL_DrawNumber(wTeamId, 3, PAL_XY(x + 72, y + 4), kNumColorCyan, kNumAlignRight);
+
+            if (i == iCurrent)
+            {
+               PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
+                  gpScreen, PAL_XY(x + 20, y + 10));
+            }
          }
       }
 
