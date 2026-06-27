@@ -1191,6 +1191,31 @@ PAL_PlayerStatus(
       }
 
       //
+      // Draw active buff statuses
+      //
+      {
+         static const char *rgszBuffLabels[] = {
+            "\xe5\x82\x80\xe5\x84\xa1",  // 傀儡 (kStatusPuppet)
+            "\xe5\xa4\xa9\xe7\xbd\xa1",  // 天罡 (kStatusBravery)
+            "\xe9\x87\x91\xe5\x89\x9b",  // 金剛 (kStatusProtect)
+            "\xe4\xbb\x99\xe9\xa2\xa8",  // 仙風 (kStatusHaste)
+            "\xe9\x86\x89\xe4\xbb\x99",  // 醉仙 (kStatusDualAttack)
+         };
+         int kk = 0;
+         for (j = kStatusPuppet; j < kStatusAll; j++)
+         {
+            if (gpGlobals->rgPlayerStatus[iPlayerRole][j] > 0)
+            {
+               PAL_DrawSmallText(rgszBuffLabels[j - kStatusPuppet],
+                  gpScreen, PAL_XY(270, 8 + kk * 14), MENUITEM_COLOR);
+               PAL_DrawNumber(gpGlobals->rgPlayerStatus[iPlayerRole][j], 3,
+                  PAL_XY(300, 10 + kk * 14), kNumColorCyan, kNumAlignRight);
+               kk++;
+            }
+         }
+      }
+
+      //
       // Update the screen
       //
       VIDEO_UpdateScreen(NULL);

@@ -301,18 +301,19 @@ PAL_BattleUIDrawMiscMenu(
       {  1,      BATTLEUI_LABEL_INVENTORY, TRUE,     PAL_XY(16, 50)  },
       {  2,      BATTLEUI_LABEL_DEFEND,    TRUE,     PAL_XY(16, 68)  },
       {  3,      BATTLEUI_LABEL_FLEE,      TRUE,     PAL_XY(16, 86)  },
-      {  4,      BATTLEUI_LABEL_STATUS,    TRUE,     PAL_XY(16, 104) }
+      {  4,      BATTLEUI_LABEL_STATUS,    TRUE,     PAL_XY(16, 104) },
+      {  5,      BATTLEUI_LABEL_ENEMYINFO, TRUE,     PAL_XY(16, 122) }
    };
 
    //
    // Draw the box
    //
-   PAL_CreateBox(PAL_XY(2, 20), 4, PAL_MenuTextMaxWidth(rgMenuItem, sizeof(rgMenuItem)/sizeof(MENUITEM)) - 1, 0, FALSE);
+   PAL_CreateBox(PAL_XY(2, 20), BATTLEUI_MISC_ITEMS - 1, PAL_MenuTextMaxWidth(rgMenuItem, sizeof(rgMenuItem)/sizeof(MENUITEM)) - 1, 0, FALSE);
 
    //
    // Draw the menu items
    //
-   for (i = 0; i < 5; i++)
+   for (i = 0; i < BATTLEUI_MISC_ITEMS; i++)
    {
       bColor = MENUITEM_COLOR;
 
@@ -328,7 +329,15 @@ PAL_BattleUIDrawMiscMenu(
          }
       }
 
-      PAL_DrawText(PAL_GetWord(rgMenuItem[i].wNumWord), rgMenuItem[i].pos, bColor, TRUE, FALSE, FALSE);
+      if (rgMenuItem[i].wNumWord == BATTLEUI_LABEL_ENEMYINFO)
+      {
+         PAL_DrawSmallText("\xe6\x83\x85\xe5\xa0\xb1",
+            gpScreen, rgMenuItem[i].pos, bColor);  // 情報
+      }
+      else
+      {
+         PAL_DrawText(PAL_GetWord(rgMenuItem[i].wNumWord), rgMenuItem[i].pos, bColor, TRUE, FALSE, FALSE);
+      }
    }
 }
 
@@ -364,13 +373,13 @@ PAL_BattleUIMiscMenuUpdate(
       g_iCurMiscMenuItem--;
       if (g_iCurMiscMenuItem < 0)
       {
-         g_iCurMiscMenuItem = 4;
+         g_iCurMiscMenuItem = BATTLEUI_MISC_ITEMS - 1;
       }
    }
    else if (g_InputState.dwKeyPress & (kKeyDown | kKeyRight))
    {
       g_iCurMiscMenuItem++;
-      if (g_iCurMiscMenuItem > 4)
+      if (g_iCurMiscMenuItem > BATTLEUI_MISC_ITEMS - 1)
       {
          g_iCurMiscMenuItem = 0;
       }
@@ -673,6 +682,264 @@ PAL_BattleUIPickAutoMagic(
    return wMagic;
 }
 
+static VOID
+PAL_EnemyStatus(
+   VOID
+)
+/*++
+  Purpose:
+
+    Show enemy info panel during battle.
+
+  Parameters:
+
+    None.
+
+  Return value:
+
+    None.
+
+--*/
+{
+   PAL_LARGE BYTE   bufBackground[320 * 200];
+   int              iCurrent;
+   int              i;
+
+   //
+   // Find the first alive enemy
+   //
+   iCurrent = -1;
+   for (i = 0; i <= g_Battle.wMaxEnemyIndex; i++)
+   {
+      if (g_Battle.rgEnemy[i].wObjectID != 0 && g_Battle.rgEnemy[i].e.wHealth != 0)
+      {
+         iCurrent = i;
+         break;
+      }
+   }
+
+   if (iCurrent < 0)
+   {
+      return;
+   }
+
+   while (iCurrent >= 0 && iCurrent <= (int)g_Battle.wMaxEnemyIndex)
+   {
+      BATTLEENEMY *be = &g_Battle.rgEnemy[iCurrent];
+      WORD wMaxHP;
+      int x_lbl = 206, y0 = 8, h = 16;
+      int x_val = 242;
+      int col;
+
+      //
+      // Draw the battlefield background
+      //
+      PAL_MKFDecompressChunk(bufBackground, 320 * 200,
+         gpGlobals->wNumBattleField, gpGlobals->f.fpFBP);
+      PAL_FBPBlitToSurface(bufBackground, gpScreen);
+
+      //
+      // Draw the enemy sprite at its battle position
+      //
+      if (be->lpSprite != NULL)
+      {
+         LPCBITMAPRLE lpFrame = PAL_SpriteGetFrame(be->lpSprite, be->wCurrentFrame);
+         if (lpFrame != NULL)
+         {
+            int ex = PAL_X(be->pos) - PAL_RLEGetWidth(lpFrame) / 2;
+            int ey = PAL_Y(be->pos) - PAL_RLEGetHeight(lpFrame);
+            PAL_RLEBlitToSurface(lpFrame, gpScreen, PAL_XY(ex, ey));
+         }
+      }
+
+      //
+      // Draw labels with PAL_DrawSmallText (UTF-8)
+      //
+      PAL_DrawSmallText("\xe7\xb6\x93\xe9\xa9\x97\xe5\x80\xbc",
+         gpScreen, PAL_XY(x_lbl, y0 + 0 * h), MENUITEM_COLOR);        // 經驗值
+      PAL_DrawSmallText("\xe4\xbf\xae\xe8\xa1\x8c",
+         gpScreen, PAL_XY(x_lbl, y0 + 1 * h), MENUITEM_COLOR);        // 修行
+      PAL_DrawSmallText("\xe9\xab\x94\xe5\x8a\x9b",
+         gpScreen, PAL_XY(x_lbl, y0 + 2 * h), MENUITEM_COLOR);        // 體力
+      PAL_DrawSmallText("\xe5\xb7\xab\xe6\x8a\x97",
+         gpScreen, PAL_XY(x_lbl, y0 + 3 * h), MENUITEM_COLOR);        // 巫抗
+      PAL_DrawSmallText("\xe5\xa6\x96\xe5\x8a\x9b",
+         gpScreen, PAL_XY(x_lbl, y0 + 4 * h), MENUITEM_COLOR);        // 妖力
+      PAL_DrawSmallText("\xe5\x81\xb7\xe7\xab\x8a",
+         gpScreen, PAL_XY(x_lbl, y0 + 5 * h), MENUITEM_COLOR);        // 偷竊
+      PAL_DrawSmallText("\xe6\x94\xbb\xe6\x93\x8a\xe6\x95\x88\xe6\x9e\x9c",
+         gpScreen, PAL_XY(x_lbl, y0 + 6 * h), MENUITEM_COLOR);        // 攻擊效果
+
+      //
+      // Draw numeric values
+      //
+      PAL_DrawNumber(be->e.wExp, 5,
+         PAL_XY(x_val + 16, y0 + 4 + 0 * h), kNumColorYellow, kNumAlignRight);
+      PAL_DrawNumber(be->e.wLevel, 3,
+         PAL_XY(x_val + 6, y0 + 4 + 1 * h), kNumColorYellow, kNumAlignRight);
+
+      //
+      // HP / MaxHP
+      //
+      wMaxHP = gpGlobals->g.lprgEnemy[gpGlobals->g.rgObject[be->wObjectID].enemy.wEnemyID].wHealth;
+      PAL_DrawNumber(be->e.wHealth, 5,
+         PAL_XY(x_val, y0 + 4 + 2 * h), kNumColorYellow, kNumAlignRight);
+      PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_SLASH),
+         gpScreen, PAL_XY(x_val + 29, y0 + 4 + 2 * h));
+      PAL_DrawNumber(wMaxHP, 5,
+         PAL_XY(x_val + 26, y0 + 4 + 2 * h + 5), kNumColorBlue, kNumAlignRight);
+
+      //
+      // 巫抗 (sorcery resistance)
+      //
+      PAL_DrawNumber(gpGlobals->g.rgObject[be->wObjectID].enemy.wResistanceToSorcery, 4,
+         PAL_XY(x_val, y0 + 4 + 3 * h), kNumColorYellow, kNumAlignRight);
+
+      //
+      // 妖力 (collect value)
+      //
+      PAL_DrawNumber(be->e.wCollectValue, 4,
+         PAL_XY(x_val, y0 + 4 + 4 * h), kNumColorYellow, kNumAlignRight);
+
+      //
+      // 偷竊 (steal item count + item name)
+      //
+      PAL_DrawNumber(be->e.nStealItem, 4,
+         PAL_XY(x_val, y0 + 4 + 5 * h), kNumColorYellow, kNumAlignRight);
+      if (be->e.wStealItem != 0)
+      {
+         PAL_DrawText(PAL_GetWord(be->e.wStealItem),
+            PAL_XY(x_val + 30, y0 + 5 * h), MENUITEM_COLOR_CONFIRMED, TRUE, FALSE, FALSE);
+      }
+
+      //
+      // 攻擊效果 (attack equiv item name)
+      //
+      if (be->e.wAttackEquivItem != 0)
+      {
+         PAL_DrawText(PAL_GetWord(be->e.wAttackEquivItem),
+            PAL_XY(x_val + 30, y0 + 7 * h), MENUITEM_COLOR_CONFIRMED, TRUE, FALSE, FALSE);
+      }
+
+      //
+      // Element resistance row
+      //
+      for (col = 0; col < NUM_MAGIC_ELEMENTAL + 2; col++)
+      {
+         int cell_x = x_lbl + col * 16;
+         int def_v = 0;
+
+         if (col < NUM_MAGIC_ELEMENTAL)
+         {
+            int me = (int)gpGlobals->g.lprgBattleField[gpGlobals->wNumBattleField].rgsMagicEffect[col];
+            int er = (int)be->e.wElemResistance[col];
+            def_v = 10 + me - er;
+            if (def_v < 0) def_v = 0;
+         }
+         else if (col == NUM_MAGIC_ELEMENTAL)
+         {
+            def_v = 10 - (int)be->e.wPhysicalResistance;
+         }
+         else
+         {
+            def_v = 10 - (int)be->e.wPoisonResistance;
+         }
+
+         if (def_v < 0) def_v = 0;
+
+         PAL_DrawNumber((UINT)def_v, 2,
+            PAL_XY(cell_x, y0 + 4 + 10 * h), kNumColorYellow, kNumAlignRight);
+      }
+
+      //
+      // Cash amount
+      //
+      PAL_DrawText(PAL_GetWord(21), PAL_XY(3, 180), MENUITEM_COLOR, TRUE, FALSE, FALSE);
+      PAL_DrawNumber(be->e.wCash, 6, PAL_XY(40, 185), kNumColorYellow, kNumAlignRight);
+
+      //
+      // Enemy name
+      //
+      PAL_DrawText(PAL_GetWord(be->wObjectID), PAL_XY(20, 6),
+         MENUITEM_COLOR_CONFIRMED, TRUE, FALSE, FALSE);
+
+      //
+      // Active poisons on the enemy
+      //
+      {
+         int py = 25;
+         for (i = 0; i < MAX_POISONS; i++)
+         {
+            WORD w = be->rgPoisons[i].wPoisonID;
+            if (w != 0)
+            {
+               PAL_DrawText(PAL_GetWord(w), PAL_XY(20, py),
+                  (BYTE)(gpGlobals->g.rgObject[w].poison.wColor + 10), TRUE, FALSE, FALSE);
+               py += 19;
+            }
+         }
+      }
+
+      //
+      // Update the screen
+      //
+      VIDEO_UpdateScreen(NULL);
+
+      //
+      // Wait for input
+      //
+      PAL_ClearKeyState();
+
+      while (TRUE)
+      {
+         UTIL_Delay(1);
+
+         if (g_InputState.dwKeyPress & kKeyMenu)
+         {
+            return;
+         }
+         else if (g_InputState.dwKeyPress & (kKeyLeft | kKeyUp))
+         {
+            //
+            // Previous enemy
+            //
+            for (i = iCurrent - 1; i >= 0; i--)
+            {
+               if (g_Battle.rgEnemy[i].wObjectID != 0 && g_Battle.rgEnemy[i].e.wHealth != 0)
+               {
+                  break;
+               }
+            }
+            if (i < 0)
+            {
+               return;
+            }
+            iCurrent = i;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & (kKeyRight | kKeyDown | kKeySearch))
+         {
+            //
+            // Next enemy
+            //
+            for (i = iCurrent + 1; i <= (int)g_Battle.wMaxEnemyIndex; i++)
+            {
+               if (g_Battle.rgEnemy[i].wObjectID != 0 && g_Battle.rgEnemy[i].e.wHealth != 0)
+               {
+                  break;
+               }
+            }
+            if (i > (int)g_Battle.wMaxEnemyIndex)
+            {
+               return;
+            }
+            iCurrent = i;
+            break;
+         }
+      }
+   }
+}
+
 VOID
 PAL_BattleUIUpdate(
    VOID
@@ -796,6 +1063,12 @@ PAL_BattleUIUpdate(
    if (g_InputState.dwKeyPress & kKeyStatus)
    {
       PAL_PlayerStatus();
+      goto end;
+   }
+
+   if (g_InputState.dwKeyPress & kKeyInfo)
+   {
+      PAL_EnemyStatus();
       goto end;
    }
 
@@ -1219,6 +1492,10 @@ PAL_BattleUIUpdate(
 
                case 5: // status
                   PAL_PlayerStatus();
+                  break;
+
+               case 6: // enemy info
+                  PAL_EnemyStatus();
                   break;
                }
             }

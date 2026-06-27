@@ -72,6 +72,9 @@ typedef enum tagBATTLEUIACTION
 #define BATTLEUI_LABEL_FLEE              59
 #define BATTLEUI_LABEL_STATUS            60
 
+#define BATTLEUI_LABEL_ENEMYINFO         614
+#define BATTLEUI_MISC_ITEMS              6
+
 #define BATTLEUI_LABEL_USEITEM           23
 #define BATTLEUI_LABEL_THROWITEM         24
 

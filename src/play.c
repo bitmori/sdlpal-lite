@@ -560,6 +560,13 @@ PAL_StartFrame(
       //
       PAL_PlayerStatus();
    }
+   else if (g_InputState.dwKeyPress & kKeyInfo)
+   {
+      //
+      // Show the player status (info key)
+      //
+      PAL_PlayerStatus();
+   }
    else if (g_InputState.dwKeyPress & kKeySearch)
    {
       //
