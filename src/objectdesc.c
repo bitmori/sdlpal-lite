@@ -1,26 +1,30 @@
-// objectdesc.c — Load desc.json and render UTF-8 object descriptions.
+/* -*- mode: c; tab-width: 4; c-basic-offset: 4; c-file-style: "linux" -*- */
 //
-// Format: {"<hex_id>|<type>": "description line1\nline2", ...}
-// type: M = Magic, I = Item, else = Other
-// Descriptions are UTF-8, rendered with the zpix small font.
+// objectdesc.c — Load desc.txt and render UTF-8 object descriptions.
+//
+// Format:
+//   +<hex_id>=<name>=<type>    start entry (type: M=Magic, I=Item, ?=Other)
+//   description lines...       (multi-line, joined with \n)
+//   -                          end entry
+//   ;comment                   ignored
+//
 
 #include "main.h"
 #include "font.h"
-#include "cJSON.h"
 
 #define MAX_DESC_ENTRIES 1024
+#define MAX_DESC_TEXT    256
 
 typedef struct tagDESC_ENTRY
 {
    WORD             wID;
    OBJECT_DESC_TYPE type;
-   const char      *pszText;
+   char             szText[MAX_DESC_TEXT];
 } DESC_ENTRY;
 
 static DESC_ENTRY  g_rgDescEntries[MAX_DESC_ENTRIES];
 static int         g_nDescEntries = 0;
 static BOOL        g_fDescLoaded = FALSE;
-static char       *g_pszJsonBuf = NULL;
 
 VOID
 PAL_LoadObjectDesc(
@@ -28,76 +32,73 @@ PAL_LoadObjectDesc(
 )
 {
    FILE *fp;
-   long lSize;
-   cJSON *pRoot, *pItem;
-   char *pKey;
+   char buf[512];
+   int  iCurrent = -1;
 
    if (g_fDescLoaded) return;
    g_fDescLoaded = TRUE;
 
-   fp = UTIL_OpenFileForMode("desc.json", "r");
+   fp = UTIL_OpenFileForMode("desc.txt", "r");
    if (fp == NULL) return;
 
-   fseek(fp, 0, SEEK_END);
-   lSize = ftell(fp);
-   fseek(fp, 0, SEEK_SET);
-
-   if (lSize <= 0 || lSize > 1024 * 1024)
+   while (fgets(buf, sizeof(buf), fp) != NULL)
    {
-      fclose(fp);
-      return;
-   }
+      char *p = buf;
+      while (*p == ' ' || *p == '\t') p++;
 
-   g_pszJsonBuf = (char *)malloc(lSize + 1);
-   if (g_pszJsonBuf == NULL)
-   {
-      fclose(fp);
-      return;
-   }
+      size_t len = strlen(p);
+      while (len > 0 && (p[len-1] == '\n' || p[len-1] == '\r'))
+         p[--len] = '\0';
 
-   fread(g_pszJsonBuf, 1, lSize, fp);
-   g_pszJsonBuf[lSize] = '\0';
-   fclose(fp);
+      if (len == 0 || *p == ';')
+         continue;
 
-   pRoot = cJSON_Parse(g_pszJsonBuf);
-   if (pRoot == NULL || !cJSON_IsObject(pRoot))
-   {
-      if (pRoot) cJSON_Delete(pRoot);
-      free(g_pszJsonBuf);
-      g_pszJsonBuf = NULL;
-      return;
-   }
-
-   cJSON_ArrayForEach(pItem, pRoot)
-   {
-      if (g_nDescEntries >= MAX_DESC_ENTRIES) break;
-      if (!cJSON_IsString(pItem)) continue;
-
-      pKey = pItem->string;
-      if (pKey == NULL) continue;
-
-      WORD wID = (WORD)strtol(pKey, NULL, 16);
-      OBJECT_DESC_TYPE type = kObjDescOther;
-
-      char *pBar = strchr(pKey, '|');
-      if (pBar != NULL && pBar[1] != '\0')
+      if (*p == '+')
       {
-         switch (pBar[1])
+         if (g_nDescEntries >= MAX_DESC_ENTRIES) break;
+         iCurrent = g_nDescEntries++;
+
+         p++;
+         WORD wID = (WORD)strtol(p, &p, 16);
+         g_rgDescEntries[iCurrent].wID = wID;
+         g_rgDescEntries[iCurrent].szText[0] = '\0';
+         g_rgDescEntries[iCurrent].type = kObjDescOther;
+
+         // skip to type field (after second '=')
+         char *pEq = strchr(p, '=');
+         if (pEq != NULL)
          {
-         case 'M': case 'm': type = kObjDescMagic; break;
-         case 'I': case 'i': type = kObjDescItem; break;
+            pEq = strchr(pEq + 1, '=');
+            if (pEq != NULL && pEq[1] != '\0')
+            {
+               switch (pEq[1])
+               {
+               case 'M': case 'm': g_rgDescEntries[iCurrent].type = kObjDescMagic; break;
+               case 'I': case 'i': g_rgDescEntries[iCurrent].type = kObjDescItem; break;
+               }
+            }
          }
       }
+      else if (*p == '-')
+      {
+         iCurrent = -1;
+      }
+      else if (iCurrent >= 0)
+      {
+         DESC_ENTRY *pEntry = &g_rgDescEntries[iCurrent];
+         size_t cur = strlen(pEntry->szText);
 
-      g_rgDescEntries[g_nDescEntries].wID = wID;
-      g_rgDescEntries[g_nDescEntries].type = type;
-      g_rgDescEntries[g_nDescEntries].pszText = pItem->valuestring;
-      g_nDescEntries++;
+         if (cur > 0 && cur < MAX_DESC_TEXT - 1)
+            pEntry->szText[cur++] = '\n';
+
+         size_t remain = MAX_DESC_TEXT - 1 - cur;
+         if (len > remain) len = remain;
+         memcpy(pEntry->szText + cur, p, len);
+         pEntry->szText[cur + len] = '\0';
+      }
    }
 
-   // NOTE: we intentionally do NOT call cJSON_Delete(pRoot) because
-   // pItem->valuestring pointers are used directly as description text.
-   // The JSON tree and g_pszJsonBuf live for the lifetime of the program.
+   fclose(fp);
 }
 
 LPCSTR
@@ -109,7 +110,7 @@ PAL_GetObjectDesc(
    for (i = 0; i < g_nDescEntries; i++)
    {
       if (g_rgDescEntries[i].wID == wObjectID)
-         return g_rgDescEntries[i].pszText;
+         return g_rgDescEntries[i].szText;
    }
    return NULL;
 }
@@ -159,7 +160,6 @@ PAL_DrawObjectDesc(
          continue;
       }
 
-      // Decode one UTF-8 codepoint
       const unsigned char *p = (const unsigned char *)pszText;
       uint32_t cp;
       int n;
