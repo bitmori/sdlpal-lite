@@ -742,3 +742,45 @@ PAL_SmallFontHeight(
 {
 	return SMALL_FONT_HEIGHT;
 }
+
+static uint32_t
+PAL_DecodeUTF8(
+	const char **pp
+)
+{
+	const unsigned char *p = (const unsigned char *)*pp;
+	uint32_t cp;
+	if (*p < 0x80) {
+		cp = *p++;
+	} else if ((*p & 0xE0) == 0xC0) {
+		cp = (*p++ & 0x1F) << 6;
+		cp |= (*p++ & 0x3F);
+	} else if ((*p & 0xF0) == 0xE0) {
+		cp = (*p++ & 0x0F) << 12;
+		cp |= (*p++ & 0x3F) << 6;
+		cp |= (*p++ & 0x3F);
+	} else {
+		cp = '?';
+		p++;
+	}
+	*pp = (const char *)p;
+	return cp;
+}
+
+void
+PAL_DrawSmallText(
+	const char          *pszText,
+	SDL_Surface         *lpSurface,
+	PAL_POS              pos,
+	uint8_t              bColor
+)
+{
+	int x = PAL_X(pos), y = PAL_Y(pos);
+	while (*pszText)
+	{
+		uint32_t cp = PAL_DecodeUTF8(&pszText);
+		if (cp >= FONT_TABLE_SIZE) continue;
+		PAL_DrawSmallCharOnSurface((uint16_t)cp, lpSurface, PAL_XY(x, y), bColor);
+		x += PAL_SmallCharWidth((uint16_t)cp);
+	}
+}

@@ -137,6 +137,14 @@ PAL_SmallFontHeight(
 	void
 );
 
+void
+PAL_DrawSmallText(
+	const char          *pszText,
+	SDL_Surface         *lpSurface,
+	PAL_POS              pos,
+	uint8_t              bColor
+);
+
 PAL_C_LINKAGE_END
 
 #endif
