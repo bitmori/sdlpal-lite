@@ -1,0 +1,164 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL2
+        run: brew install sdl2
+      - name: Build and bundle
+        run: |
+          make
+          mkdir -p dist
+          cp sdlpal dist/
+          SDL_DYLIB=$(otool -L sdlpal | grep libSDL2 | awk '{print $1}')
+          cp "$SDL_DYLIB" dist/
+          install_name_tool -change "$SDL_DYLIB" @executable_path/$(basename "$SDL_DYLIB") dist/sdlpal
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdlpal-macos-arm64
+          path: dist/
+
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+            make
+      - name: Build
+        run: make
+      - name: Bundle
+        run: |
+          mkdir -p dist
+          cp sdlpal.exe dist/
+          cp /mingw64/bin/SDL2.dll dist/
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdlpal-windows-x64
+          path: dist/
+
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev patchelf
+      - name: Build
+        run: make
+      - name: Bundle
+        run: |
+          mkdir -p dist
+          cp sdlpal dist/
+          SDL_SO=$(ldd sdlpal | grep libSDL2 | awk '{print $3}')
+          cp "$SDL_SO" dist/
+          patchelf --set-rpath '$ORIGIN' dist/sdlpal || true
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdlpal-linux-x64
+          path: dist/
+
+  build-linux-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross-compiler
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+      - name: Fetch SDL2 arm64 dev packages
+        run: |
+          CODENAME=$(lsb_release -cs)
+          mkdir -p /tmp/sdl2
+          cd /tmp/sdl2
+          sudo dpkg --add-architecture arm64
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ ${CODENAME} main universe" | sudo tee /etc/apt/sources.list.d/arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ ${CODENAME}-updates main universe" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+          sudo apt-get update -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/arm64.list -o Dir::Etc::sourceparts=/dev/null
+          apt-get download libsdl2-dev:arm64 libsdl2-2.0-0:arm64
+          for deb in *.deb; do sudo dpkg -x "$deb" /tmp/sdl2/root; done
+          # Fix: SDL_config.h may include <SDL2/_real_SDL_config.h> from an
+          # arch-specific path. Find it anywhere in the extracted tree and put it
+          # where the compiler can find it via both <SDL2/...> and direct include.
+          REAL_CFG=$(find /tmp/sdl2/root -name "_real_SDL_config.h" 2>/dev/null | head -1)
+          if [ -n "$REAL_CFG" ]; then
+            sudo cp "$REAL_CFG" /tmp/sdl2/root/usr/include/SDL2/_real_SDL_config.h
+            sudo cp "$REAL_CFG" /tmp/sdl2/root/usr/include/SDL2/SDL_config.h
+          else
+            # sdl2-compat wrapper: just neuter the include
+            sudo sed -i '/_real_SDL_config/d' /tmp/sdl2/root/usr/include/SDL2/SDL_config.h
+          fi
+          sudo sed -i "s|^prefix=.*|prefix=/tmp/sdl2/root/usr|" /tmp/sdl2/root/usr/bin/sdl2-config
+          sudo chmod +x /tmp/sdl2/root/usr/bin/sdl2-config
+      - name: Build
+        run: |
+          SDL_CFG="/tmp/sdl2/root/usr/bin/sdl2-config"
+          SDL_CFLAGS="$($SDL_CFG --cflags) -I/tmp/sdl2/root/usr/include"
+          SDL_LIBDIR=$(find /tmp/sdl2/root -name "libSDL2.so" -printf '%h\n' | head -1)
+          make CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
+               CCFLAGS="${SDL_CFLAGS} -g -Wall -O2 -fno-strict-aliasing -Isrc/unix -Isrc -DPAL_HAS_PLATFORM_SPECIFIC_UTILS" \
+               LDFLAGS="-L${SDL_LIBDIR} -lSDL2 -lm -pthread -Wl,--allow-shlib-undefined"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdlpal-linux-arm64
+          path: sdlpal
+
+  build-linux-armhf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross-compiler
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+      - name: Fetch SDL2 armhf dev packages
+        run: |
+          CODENAME=$(lsb_release -cs)
+          mkdir -p /tmp/sdl2
+          cd /tmp/sdl2
+          sudo dpkg --add-architecture armhf
+          echo "deb [arch=armhf] http://ports.ubuntu.com/ ${CODENAME} main universe" | sudo tee /etc/apt/sources.list.d/armhf.list
+          echo "deb [arch=armhf] http://ports.ubuntu.com/ ${CODENAME}-updates main universe" | sudo tee -a /etc/apt/sources.list.d/armhf.list
+          sudo apt-get update -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/armhf.list -o Dir::Etc::sourceparts=/dev/null
+          apt-get download libsdl2-dev:armhf libsdl2-2.0-0:armhf
+          for deb in *.deb; do sudo dpkg -x "$deb" /tmp/sdl2/root; done
+          # Fix all SDL_config.h wrappers that reference _real_SDL_config.h
+          find /tmp/sdl2/root -name "SDL_config.h" | while read f; do
+            if grep -q '_real_SDL_config' "$f"; then
+              REAL=$(find /tmp/sdl2/root -name "_real_SDL_config.h" 2>/dev/null | head -1)
+              if [ -n "$REAL" ]; then
+                sudo cp "$REAL" "$f"
+              else
+                sudo sed -i '/_real_SDL_config/d' "$f"
+              fi
+            fi
+          done
+          sudo sed -i "s|^prefix=.*|prefix=/tmp/sdl2/root/usr|" /tmp/sdl2/root/usr/bin/sdl2-config
+          sudo chmod +x /tmp/sdl2/root/usr/bin/sdl2-config
+      - name: Build
+        run: |
+          SDL_CFG="/tmp/sdl2/root/usr/bin/sdl2-config"
+          SDL_CFLAGS="$($SDL_CFG --cflags) -I/tmp/sdl2/root/usr/include"
+          SDL_LIBDIR=$(find /tmp/sdl2/root -name "libSDL2.so" -printf '%h\n' | head -1)
+          make CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ \
+               CCFLAGS="${SDL_CFLAGS} -g -Wall -O2 -fno-strict-aliasing -Isrc/unix -Isrc -DPAL_HAS_PLATFORM_SPECIFIC_UTILS" \
+               LDFLAGS="-L${SDL_LIBDIR} -lSDL2 -lm -pthread -Wl,--allow-shlib-undefined"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdlpal-linux-armhf
+          path: sdlpal
