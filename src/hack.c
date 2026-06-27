@@ -22,6 +22,9 @@ typedef enum tagHACK_OP
    kHackOpChangeMagicData,
    kHackOpChangeObj,
    kHackOpEditScript,
+   kHackOpAddMagic,
+   kHackOpAddItem,
+   kHackOpDelItem,
 } HACK_OP;
 
 typedef struct tagHACK_INSTR
@@ -83,6 +86,25 @@ PAL_ParseInstruction(
       if (sscanf(pszLine, "%i %i %i %i %i",
          &pInstr->args[0], &pInstr->args[1], &pInstr->args[2],
          &pInstr->args[3], &pInstr->args[4]) < 5)
+         return FALSE;
+   }
+   else if (strcasecmp(cmd, "ADD_MAGIC") == 0)
+   {
+      pInstr->op = kHackOpAddMagic;
+      if (sscanf(pszLine, "%i %i", &pInstr->args[0], &pInstr->args[1]) < 2)
+         return FALSE;
+   }
+   else if (strcasecmp(cmd, "ADD_ITEM") == 0)
+   {
+      pInstr->op = kHackOpAddItem;
+      if (sscanf(pszLine, "%i %i", &pInstr->args[0], &pInstr->args[1]) < 2)
+         return FALSE;
+   }
+   else if (strcasecmp(cmd, "DEL_ITEM") == 0)
+   {
+      pInstr->op = kHackOpDelItem;
+      pInstr->args[1] = 0; // 0 means delete all
+      if (sscanf(pszLine, "%i %i", &pInstr->args[0], &pInstr->args[1]) < 1)
          return FALSE;
    }
    else
@@ -231,6 +253,31 @@ PAL_ExecuteInstruction(
          gpGlobals->g.lprgScriptEntry[entry].rgwOperand[1] = (WORD)pInstr->args[3];
          gpGlobals->g.lprgScriptEntry[entry].rgwOperand[2] = (WORD)pInstr->args[4];
       }
+      break;
+   }
+
+   case kHackOpAddMagic:
+   {
+      int player = pInstr->args[0];
+      int obj_id = pInstr->args[1];
+      if (player >= 0 && player < MAX_PLAYERS_IN_PARTY)
+      {
+         WORD wPlayerRole = gpGlobals->rgParty[player].wPlayerRole;
+         PAL_AddMagic(wPlayerRole, (WORD)obj_id);
+      }
+      break;
+   }
+
+   case kHackOpAddItem:
+      PAL_AddItemToInventory((WORD)pInstr->args[0], pInstr->args[1]);
+      break;
+
+   case kHackOpDelItem:
+   {
+      int count = pInstr->args[1];
+      if (count <= 0)
+         count = 99;
+      PAL_AddItemToInventory((WORD)pInstr->args[0], -count);
       break;
    }
    }
