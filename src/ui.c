@@ -703,6 +703,72 @@ PAL_DrawNumber(
    }
 }
 
+VOID
+PAL_DrawNumberEx(
+   UINT            iNum,
+   UINT            nLength,
+   PAL_POS         pos,
+   NUMCOLOREX      color,
+   NUMALIGN        align
+)
+{
+   static const struct { BYTE base; INT shift; } colorParams[] = {
+      { 0xB0,  0 }, // yellow
+      { 0xD0, -2 }, // blue
+      { 0x80, -2 }, // cyan
+      { 0xC0, -4 }, // green
+      { 0x30, -4 }, // gold
+      { 0x50, -4 }, // navy
+      { 0x10, -4 }, // red
+      { 0x60, -4 }, // purple
+      { 0x00, -5 }, // pale
+      { 0x00, -8 }, // gray
+   };
+
+   UINT          nActualLength, i;
+   int           x, y;
+   LPCBITMAPRLE  rglpBitmap[10];
+   int           spriteBase;
+   BOOL          fRecolor;
+
+   switch (color)
+   {
+   case kNumColorExBlue: spriteBase = 29; fRecolor = FALSE; break;
+   case kNumColorExCyan: spriteBase = 56; fRecolor = FALSE; break;
+   default:             spriteBase = 19; fRecolor = TRUE;  break;
+   }
+
+   for (i = 0; i < 10; i++)
+      rglpBitmap[i] = PAL_SpriteGetFrame(gpSpriteUI, (UINT)spriteBase + i);
+
+   i = iNum;
+   nActualLength = 0;
+   while (i > 0) { i /= 10; nActualLength++; }
+   if (nActualLength > nLength) nActualLength = nLength;
+   else if (nActualLength == 0) nActualLength = 1;
+
+   x = PAL_X(pos) - 6;
+   y = PAL_Y(pos);
+
+   switch (align)
+   {
+   case kNumAlignLeft:  x += 6 * nActualLength; break;
+   case kNumAlignMid:   x += 3 * (nLength + nActualLength); break;
+   case kNumAlignRight: x += 6 * nLength; break;
+   }
+
+   while (nActualLength-- > 0)
+   {
+      if (fRecolor)
+         PAL_RLEBlitMonoColor(rglpBitmap[iNum % 10], gpScreen, PAL_XY(x, y),
+                              colorParams[color].base, colorParams[color].shift);
+      else
+         PAL_RLEBlitToSurface(rglpBitmap[iNum % 10], gpScreen, PAL_XY(x, y));
+      x -= 6;
+      iNum /= 10;
+   }
+}
+
 /*++
 	Purpose:
 

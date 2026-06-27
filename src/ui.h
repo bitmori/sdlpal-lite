@@ -155,6 +155,20 @@ typedef enum tagNUMCOLOR
    kNumColorCyan
 } NUMCOLOR;
 
+typedef enum tagNUMCOLOREX
+{
+   kNumColorExYellow,
+   kNumColorExBlue,
+   kNumColorExCyan,
+   kNumColorExGreen,
+   kNumColorExGold,
+   kNumColorExNavy,
+   kNumColorExRed,
+   kNumColorExPurple,
+   kNumColorExPale,
+   kNumColorExGray
+} NUMCOLOREX;
+
 typedef enum tagNUMALIGN
 {
    kNumAlignLeft,
@@ -230,7 +244,16 @@ PAL_DrawNumber(
    NUMCOLOR        color,
    NUMALIGN        align
 );
-    
+
+VOID
+PAL_DrawNumberEx(
+   UINT            iNum,
+   UINT            nLength,
+   PAL_POS         pos,
+   NUMCOLOREX      color,
+   NUMALIGN        align
+);
+
 INT
 PAL_TextWidth(
    LPCWSTR        lpszItemText

@@ -165,6 +165,15 @@ PAL_RLEBlitToSurface(
 );
 
 INT
+PAL_RLEBlitMonoColor(
+   LPCBITMAPRLE      lpBitmapRLE,
+   SDL_Surface      *lpDstSurface,
+   PAL_POS           pos,
+   BYTE              bBaseColor,
+   INT               iColorShift
+);
+
+INT
 PAL_RLEBlitToSurfaceWithShadow(
    LPCBITMAPRLE      lpBitmapRLE,
    SDL_Surface      *lpDstSurface,
