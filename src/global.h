@@ -135,7 +135,7 @@ typedef enum tagITEMFLAG
 } ITEMFLAG;
 
 // items
-typedef struct tagOBJECT_ITEM_DOS
+typedef struct tagOBJECT_ITEM
 {
    WORD         wBitmap;         // bitmap number in BALL.MKF
    WORD         wPrice;          // price
@@ -143,18 +143,6 @@ typedef struct tagOBJECT_ITEM_DOS
    WORD         wScriptOnEquip;  // script executed when equipping this item
    WORD         wScriptOnThrow;  // script executed when throwing this item to enemy
    WORD         wFlags;          // flags
-} OBJECT_ITEM_DOS;
-
-// items
-typedef struct tagOBJECT_ITEM
-{
-	WORD         wBitmap;         // bitmap number in BALL.MKF
-	WORD         wPrice;          // price
-	WORD         wScriptOnUse;    // script executed when using this item
-	WORD         wScriptOnEquip;  // script executed when equipping this item
-	WORD         wScriptOnThrow;  // script executed when throwing this item to enemy
-	WORD         wScriptDesc;     // description script
-	WORD         wFlags;          // flags
 } OBJECT_ITEM;
 
 typedef enum tagMAGICFLAG
@@ -166,7 +154,7 @@ typedef enum tagMAGICFLAG
 } MAGICFLAG;
 
 // magics
-typedef struct tagOBJECT_MAGIC_DOS
+typedef struct tagOBJECT_MAGIC
 {
    WORD         wMagicNumber;      // magic number, according to DATA.MKF #3
    WORD         wReserved1;        // always zero
@@ -174,18 +162,6 @@ typedef struct tagOBJECT_MAGIC_DOS
    WORD         wScriptOnUse;      // when use this magic, execute script from here
    WORD         wReserved2;        // always zero
    WORD         wFlags;            // flags
-} OBJECT_MAGIC_DOS;
-
-// magics
-typedef struct tagOBJECT_MAGIC
-{
-	WORD         wMagicNumber;      // magic number, according to DATA.MKF #3
-	WORD         wReserved1;        // always zero
-	WORD         wScriptOnSuccess;  // when magic succeed, execute script from here
-	WORD         wScriptOnUse;      // when use this magic, execute script from here
-	WORD         wScriptDesc;       // description script
-	WORD         wReserved2;        // always zero
-	WORD         wFlags;            // flags
 } OBJECT_MAGIC;
 
 // enemies
@@ -209,19 +185,9 @@ typedef struct tagOBJECT_POISON
    WORD         wEnemyScript;    // script executed when enemy has this poison (per round)
 } OBJECT_POISON;
 
-typedef union tagOBJECT_DOS
-{
-	WORD              rgwData[6];
-	OBJECT_PLAYER     player;
-	OBJECT_ITEM_DOS   item;
-	OBJECT_MAGIC_DOS  magic;
-	OBJECT_ENEMY      enemy;
-	OBJECT_POISON     poison;
-} OBJECT_DOS, *LPOBJECT_DOS;
-
 typedef union tagOBJECT
 {
-	WORD              rgwData[7];
+	WORD              rgwData[6];
 	OBJECT_PLAYER     player;
 	OBJECT_ITEM       item;
 	OBJECT_MAGIC      magic;

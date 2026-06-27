@@ -340,20 +340,8 @@ PAL_LoadDefaultGame(
       0, gpGlobals->f.fpSSS);
    PAL_MKFReadChunk((LPBYTE)(p->rgScene), sizeof(p->rgScene), 1, gpGlobals->f.fpSSS);
    DO_BYTESWAP(p->rgScene, sizeof(p->rgScene));
-   {
-      OBJECT_DOS objects[MAX_OBJECTS];
-	  PAL_MKFReadChunk((LPBYTE)(objects), sizeof(objects), 2, gpGlobals->f.fpSSS);
-	  DO_BYTESWAP(objects, sizeof(objects));
-      //
-      // Convert the DOS-style data structure to WIN-style data structure
-      //
-      for (i = 0; i < MAX_OBJECTS; i++)
-      {
-         memcpy(&p->rgObject[i], &objects[i], sizeof(OBJECT_DOS));
-         p->rgObject[i].rgwData[6] = objects[i].rgwData[5];     // wFlags
-         p->rgObject[i].rgwData[5] = 0;                         // wScriptDesc or wReserved2
-      }
-   }
+   PAL_MKFReadChunk((LPBYTE)(p->rgObject), sizeof(p->rgObject), 2, gpGlobals->f.fpSSS);
+   DO_BYTESWAP(p->rgObject, sizeof(p->rgObject));
 
    PAL_MKFReadChunk((LPBYTE)(&(p->PlayerRoles)), sizeof(PLAYERROLES),
       3, gpGlobals->f.fpDATA);
@@ -450,7 +438,7 @@ typedef struct tagSAVEDGAME_DOS
 	POISONSTATUS     rgPoisonStatus[MAX_POISONS][MAX_PLAYABLE_PLAYER_ROLES]; // poison status
 	INVENTORY        rgInventory[MAX_INVENTORY];               // inventory status
 	SCENE            rgScene[MAX_SCENES];
-	OBJECT_DOS       rgObject[MAX_OBJECTS];
+	OBJECT           rgObject[MAX_OBJECTS];
 	EVENTOBJECT      rgEventObject[MAX_EVENT_OBJECTS];
 } SAVEDGAME_DOS, *LPSAVEDGAME_DOS;
 
@@ -587,14 +575,7 @@ PAL_LoadGame_DOS(
 	   return -1;
 
    //
-   // Convert the DOS-style data structure to WIN-style data structure
-   //
-   for (i = 0; i < MAX_OBJECTS; i++)
-   {
-      memcpy(&gpGlobals->g.rgObject[i], &s->rgObject[i], sizeof(OBJECT_DOS));
-      gpGlobals->g.rgObject[i].rgwData[6] = s->rgObject[i].rgwData[5];     // wFlags
-      gpGlobals->g.rgObject[i].rgwData[5] = 0;                            // wScriptDesc or wReserved2
-   }
+   memcpy(gpGlobals->g.rgObject, s->rgObject, sizeof(gpGlobals->g.rgObject));
    memcpy(gpGlobals->g.lprgEventObject, s->rgEventObject, sizeof(EVENTOBJECT) * gpGlobals->g.nEventObject);
 
    free(s);
@@ -704,11 +685,7 @@ PAL_SaveGame_DOS(
    //
    // Convert the WIN-style data structure to DOS-style data structure
    //
-   for (i = 0; i < MAX_OBJECTS; i++)
-   {
-      memcpy(&s->rgObject[i], &gpGlobals->g.rgObject[i], sizeof(OBJECT_DOS));
-      s->rgObject[i].rgwData[5] = gpGlobals->g.rgObject[i].rgwData[6];     // wFlags
-   }
+   memcpy(s->rgObject, gpGlobals->g.rgObject, sizeof(s->rgObject));
    memcpy(s->rgEventObject, gpGlobals->g.lprgEventObject, sizeof(EVENTOBJECT) * gpGlobals->g.nEventObject);
 
    //

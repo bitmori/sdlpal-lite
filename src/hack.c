@@ -236,7 +236,7 @@ PAL_ExecuteInstruction(
       int id = pInstr->args[0];
       int off = pInstr->args[1];
       int val = pInstr->args[2];
-      if (id >= 0 && id < MAX_OBJECTS && off >= 0 && off < 7)
+      if (id >= 0 && id < MAX_OBJECTS && off >= 0 && off < 6)
       {
          gpGlobals->g.rgObject[id].rgwData[off] = (WORD)val;
       }
