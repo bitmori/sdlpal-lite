@@ -340,6 +340,17 @@ typedef enum tagMAGIC_TYPE
    kMagicTypeSummon           = 9,  // summon
 } MAGIC_TYPE;
 
+typedef enum tagMAGIC_RENDER_MODE
+{
+   kMagicRenderReverse        = 1 << 0,
+   kMagicRenderReverseHeroOff = 1 << 1,
+   kMagicRenderReverseEnemyOff = 1 << 2,
+   kMagicRenderMirror         = 1 << 3,
+   kMagicRenderMirrorHeroOff  = 1 << 4,
+   kMagicRenderMirrorEnemyOff = 1 << 5,
+   kMagicRenderTripleParallel = 1 << 6,
+} MAGIC_RENDER_MODE;
+
 typedef struct tagMAGIC
 {
    WORD               wEffect;               // effect sprite
@@ -353,7 +364,7 @@ typedef struct tagMAGIC
    WORD               wEffectTimes;          // total times of effect
    WORD               wShake;                // shake screen
    WORD               wWave;                 // wave screen
-   WORD               wUnknown;              // FIXME: ???
+   WORD               wRenderMode;           // magic render mode flags
    WORD               wCostMP;               // MP cost
    WORD               wBaseDamage;           // base damage
    WORD               wElemental;            // elemental (0 = No Elemental, last = poison)

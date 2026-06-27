@@ -199,6 +199,13 @@ PAL_RLEBlitMonoColor(
 );
 
 INT
+PAL_RLEBlitToSurfaceInMirror(
+   LPCBITMAPRLE      lpBitmapRLE,
+   SDL_Surface      *lpDstSurface,
+   PAL_POS           pos
+);
+
+INT
 PAL_FBPBlitToSurface(
    LPBYTE            lpBitmapFBP,
    SDL_Surface      *lpDstSurface

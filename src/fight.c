@@ -1925,6 +1925,14 @@ PAL_BattleShowPlayerDefMagicAnim(
    iMagicNum = gpGlobals->g.rgObject[wObjectID].magic.wMagicNumber;
    iEffectNum = gpGlobals->g.lprgMagic[iMagicNum].wEffect;
 
+   {
+      WORD render_mode = gpGlobals->g.lprgMagic[iMagicNum].wRenderMode;
+      BOOL bReverseAnim = render_mode & kMagicRenderReverse;
+      g_Battle.fMagicRenderMirror = FALSE;
+      g_Battle.bMagicMonoColor = (BYTE)(render_mode >> 8);
+      (void)bReverseAnim;
+   }
+
    l = PAL_MKFGetDecompressedSize(iEffectNum, gpGlobals->f.fpFIRE);
    if (l <= 0)
    {
@@ -2056,6 +2064,9 @@ PAL_BattleShowPlayerDefMagicAnim(
 
       PAL_BattleDelay(1, 0, TRUE);
    }
+
+   g_Battle.fMagicRenderMirror = FALSE;
+   g_Battle.bMagicMonoColor = 0;
 }
 
 static VOID
@@ -2087,9 +2098,18 @@ PAL_BattleShowPlayerOffMagicAnim(
    LPSPRITE   lpSpriteEffect;
    int        l, iMagicNum, iEffectNum, n, i, k, x, y, wave, blow;
    DWORD      dwTime = SDL_GetTicks();
+   WORD       render_mode;
+   BOOL       bReverseAnim, bMirrorAnim, bTripleParallelAnim;
 
    iMagicNum = gpGlobals->g.rgObject[wObjectID].magic.wMagicNumber;
    iEffectNum = gpGlobals->g.lprgMagic[iMagicNum].wEffect;
+
+   render_mode = gpGlobals->g.lprgMagic[iMagicNum].wRenderMode;
+   bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseHeroOff);
+   bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorHeroOff);
+   bTripleParallelAnim = render_mode & kMagicRenderTripleParallel;
+   g_Battle.fMagicRenderMirror = bMirrorAnim;
+   g_Battle.bMagicMonoColor = (BYTE)(render_mode >> 8);
 
    l = PAL_MKFGetDecompressedSize(iEffectNum, gpGlobals->f.fpFIRE);
    if (l <= 0)
@@ -2139,13 +2159,18 @@ PAL_BattleShowPlayerOffMagicAnim(
       {
          if (i < n)
          {
-            k = i;
+            k = bReverseAnim ? (n - 1 - i) : i;
          }
          else
          {
             k = i - gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
             k %= n - gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
             k += gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
+            if (bReverseAnim)
+            {
+               k = n - 1 - (k - gpGlobals->g.lprgMagic[iMagicNum].wFireDelay) + gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
+               if (k >= n) k = n - 1;
+            }
          }
 
          b = PAL_SpriteGetFrame(lpSpriteEffect, k);
@@ -2158,7 +2183,9 @@ PAL_BattleShowPlayerOffMagicAnim(
       else
       {
          VIDEO_ShakeScreen(i, 3);
-         b = PAL_SpriteGetFrame(lpSpriteEffect, (l - gpGlobals->g.lprgMagic[iMagicNum].wShake - 1) % n);
+         k = (l - gpGlobals->g.lprgMagic[iMagicNum].wShake - 1) % n;
+         if (bReverseAnim) k = n - 1 - k;
+         b = PAL_SpriteGetFrame(lpSpriteEffect, k);
       }
 
       //
@@ -2182,39 +2209,78 @@ PAL_BattleShowPlayerOffMagicAnim(
          x = PAL_X(g_Battle.rgEnemy[sTarget].pos);
          y = PAL_Y(g_Battle.rgEnemy[sTarget].pos);
 
-         x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
+         x += (SHORT)(gpGlobals->g.lprgMagic[iMagicNum].wXOffset) * (bMirrorAnim ? -1 : 1);
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         if (g_Battle.fMagicRenderMirror)
+         {
+            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
+         else if (g_Battle.bMagicMonoColor != 0)
+         {
+            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
+         }
+         else
+         {
+            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            if (bMirrorAnim)
+            {
+               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
+            else
+            {
+               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
          }
       }
       else if (gpGlobals->g.lprgMagic[iMagicNum].wType == kMagicTypeAttackAll)
       {
          const int effectpos[3][2] = {{70, 140}, {100, 110}, {160, 100}};
+         const int effectpos_p[3][2] = {{70, 100}, {90, 120}, {110, 140}};
 
          assert(sTarget == -1);
 
          for (k = 0; k < 3; k++)
          {
-            x = effectpos[k][0];
-            y = effectpos[k][1];
+            x = bTripleParallelAnim ? effectpos_p[k][0] : effectpos[k][0];
+            y = bTripleParallelAnim ? effectpos_p[k][1] : effectpos[k][1];
 
-            x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
+            x += (SHORT)(gpGlobals->g.lprgMagic[iMagicNum].wXOffset) * (bMirrorAnim ? -1 : 1);
             y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            if (g_Battle.fMagicRenderMirror)
+            {
+               PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
+            else if (g_Battle.bMagicMonoColor != 0)
+            {
+               PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
+            }
+            else
+            {
+               PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
 
             if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
                gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
             {
-               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+               if (bMirrorAnim)
+               {
+                  PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
+                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+               }
+               else
+               {
+                  PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
+                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+               }
             }
          }
       }
@@ -2234,16 +2300,35 @@ PAL_BattleShowPlayerOffMagicAnim(
             y = 200;
          }
 
-         x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
+         x += (SHORT)(gpGlobals->g.lprgMagic[iMagicNum].wXOffset) * (bMirrorAnim ? -1 : 1);
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         if (g_Battle.fMagicRenderMirror)
+         {
+            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
+         else if (g_Battle.bMagicMonoColor != 0)
+         {
+            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
+         }
+         else
+         {
+            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            if (bMirrorAnim)
+            {
+               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
+            else
+            {
+               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
          }
       }
       else
@@ -2265,6 +2350,9 @@ PAL_BattleShowPlayerOffMagicAnim(
    {
       g_Battle.rgEnemy[i].pos = g_Battle.rgEnemy[i].posOriginal;
    }
+
+   g_Battle.fMagicRenderMirror = FALSE;
+   g_Battle.bMagicMonoColor = 0;
 }
 
 static VOID
@@ -2293,9 +2381,17 @@ PAL_BattleShowEnemyMagicAnim(
    LPSPRITE   lpSpriteEffect;
    int        l, iMagicNum, iEffectNum, n, i, k, x, y, wave, blow;
    DWORD      dwTime = SDL_GetTicks();
+   WORD       render_mode;
+   BOOL       bReverseAnim, bMirrorAnim;
 
    iMagicNum = gpGlobals->g.rgObject[wObjectID].magic.wMagicNumber;
    iEffectNum = gpGlobals->g.lprgMagic[iMagicNum].wEffect;
+
+   render_mode = gpGlobals->g.lprgMagic[iMagicNum].wRenderMode;
+   bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseEnemyOff);
+   bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorEnemyOff);
+   g_Battle.fMagicRenderMirror = bMirrorAnim;
+   g_Battle.bMagicMonoColor = (BYTE)(render_mode >> 8);
 
    l = PAL_MKFGetDecompressedSize(iEffectNum, gpGlobals->f.fpFIRE);
    if (l <= 0)
@@ -2335,13 +2431,18 @@ PAL_BattleShowEnemyMagicAnim(
       {
          if (i < n)
          {
-            k = i;
+            k = bReverseAnim ? (n - 1 - i) : i;
          }
          else
          {
             k = i - gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
             k %= n - gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
             k += gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
+            if (bReverseAnim)
+            {
+               k = n - 1 - (k - gpGlobals->g.lprgMagic[iMagicNum].wFireDelay) + gpGlobals->g.lprgMagic[iMagicNum].wFireDelay;
+               if (k >= n) k = n - 1;
+            }
          }
 
          b = PAL_SpriteGetFrame(lpSpriteEffect, k);
@@ -2362,7 +2463,9 @@ PAL_BattleShowEnemyMagicAnim(
       else
       {
          VIDEO_ShakeScreen(i, 3);
-         b = PAL_SpriteGetFrame(lpSpriteEffect, (l - gpGlobals->g.lprgMagic[iMagicNum].wShake - 1) % n);
+         k = (l - gpGlobals->g.lprgMagic[iMagicNum].wShake - 1) % n;
+         if (bReverseAnim) k = n - 1 - k;
+         b = PAL_SpriteGetFrame(lpSpriteEffect, k);
       }
 
       //
@@ -2389,13 +2492,32 @@ PAL_BattleShowEnemyMagicAnim(
          x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         if (g_Battle.fMagicRenderMirror)
+         {
+            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
+         else if (g_Battle.bMagicMonoColor != 0)
+         {
+            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
+         }
+         else
+         {
+            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            if (bMirrorAnim)
+            {
+               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
+            else
+            {
+               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
          }
       }
       else if (gpGlobals->g.lprgMagic[iMagicNum].wType == kMagicTypeAttackAll)
@@ -2412,13 +2534,32 @@ PAL_BattleShowEnemyMagicAnim(
             x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
             y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            if (g_Battle.fMagicRenderMirror)
+            {
+               PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
+            else if (g_Battle.bMagicMonoColor != 0)
+            {
+               PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
+            }
+            else
+            {
+               PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
 
             if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
                gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
             {
-               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+               if (bMirrorAnim)
+               {
+                  PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
+                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+               }
+               else
+               {
+                  PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
+                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+               }
             }
          }
       }
@@ -2441,13 +2582,32 @@ PAL_BattleShowEnemyMagicAnim(
          x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         if (g_Battle.fMagicRenderMirror)
+         {
+            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
+         else if (g_Battle.bMagicMonoColor != 0)
+         {
+            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
+         }
+         else
+         {
+            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         }
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            if (bMirrorAnim)
+            {
+               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
+            else
+            {
+               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            }
          }
       }
       else
@@ -2469,6 +2629,9 @@ PAL_BattleShowEnemyMagicAnim(
    {
       g_Battle.rgPlayer[i].pos = g_Battle.rgPlayer[i].posOriginal;
    }
+
+   g_Battle.fMagicRenderMirror = FALSE;
+   g_Battle.bMagicMonoColor = 0;
 }
 
 static VOID

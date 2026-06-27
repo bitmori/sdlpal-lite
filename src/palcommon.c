@@ -468,6 +468,111 @@ end:
 }
 
 INT
+PAL_RLEBlitToSurfaceInMirror(
+   LPCBITMAPRLE      lpBitmapRLE,
+   SDL_Surface      *lpDstSurface,
+   PAL_POS           pos
+)
+{
+   UINT i, k;
+   INT  y;
+   UINT uiLen = 0, uiWidth = 0, uiHeight = 0;
+   UINT uiSrcX = 0, uiSrcY = 0;
+   BYTE T;
+   INT  dx = PAL_X(pos), dy = PAL_Y(pos);
+   LPBYTE p;
+
+   if (lpBitmapRLE == NULL || lpDstSurface == NULL) return -1;
+
+   if (lpBitmapRLE[0] == 0x02 && lpBitmapRLE[1] == 0x00 &&
+       lpBitmapRLE[2] == 0x00 && lpBitmapRLE[3] == 0x00)
+   {
+      lpBitmapRLE += 4;
+   }
+
+   uiWidth = lpBitmapRLE[0] | (lpBitmapRLE[1] << 8);
+   uiHeight = lpBitmapRLE[2] | (lpBitmapRLE[3] << 8);
+
+   if (uiWidth + dx <= 0 || dx >= lpDstSurface->w ||
+       uiHeight + dy <= 0 || dy >= lpDstSurface->h)
+   {
+      return 0;
+   }
+
+   uiLen = uiWidth * uiHeight;
+   lpBitmapRLE += 4;
+
+   for (i = 0; i < uiLen;)
+   {
+      T = *lpBitmapRLE++;
+      if ((T & 0x80) && T <= 0x80 + uiWidth)
+      {
+         i += T - 0x80;
+         uiSrcX += T - 0x80;
+         while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
+      }
+      else
+      {
+         UINT processed = 0;
+         UINT curSrcX = uiSrcX;
+
+         y = dy + uiSrcY;
+         if (y < 0 || y >= lpDstSurface->h)
+         {
+            lpBitmapRLE += T;
+            i += T;
+            uiSrcX += T;
+            while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
+            continue;
+         }
+
+         p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
+
+         while (processed < T)
+         {
+            UINT pixelsInRow = T - processed;
+            if (pixelsInRow > uiWidth - curSrcX)
+               pixelsInRow = uiWidth - curSrcX;
+
+            {
+               INT dstXStart = dx + (INT)uiWidth - 1 - (INT)curSrcX;
+               INT dstXEnd = dx + (INT)uiWidth - 1 - (INT)(curSrcX + pixelsInRow - 1);
+               INT clipLeft = dstXEnd < 0 ? 0 : dstXEnd;
+               INT clipRight = dstXStart >= lpDstSurface->w ? lpDstSurface->w - 1 : dstXStart;
+
+               if (clipLeft <= clipRight)
+               {
+                  INT pxClippedLeft = clipLeft - dstXEnd;
+                  INT pxToDraw = clipRight - clipLeft + 1;
+                  for (k = 0; (INT)k < pxToDraw; k++)
+                  {
+                     p[clipRight - k] = lpBitmapRLE[processed + pxClippedLeft + k];
+                  }
+               }
+            }
+
+            processed += pixelsInRow;
+            curSrcX += pixelsInRow;
+            if (curSrcX >= uiWidth)
+            {
+               curSrcX = 0;
+               y++;
+               if (y >= lpDstSurface->h) break;
+               p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
+            }
+         }
+
+         lpBitmapRLE += T;
+         i += T;
+         uiSrcX += T;
+         while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
+      }
+   }
+
+   return 0;
+}
+
+INT
 PAL_FBPBlitToSurface(
    LPBYTE            lpBitmapFBP,
    SDL_Surface      *lpDstSurface
