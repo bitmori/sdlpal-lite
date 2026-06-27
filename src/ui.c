@@ -616,91 +616,9 @@ PAL_DrawNumber(
    NUMCOLOR        color,
    NUMALIGN        align
 )
-/*++
-  Purpose:
-
-    Draw the specified number with the bitmaps in the UI sprite.
-
-  Parameters:
-
-    [IN]  iNum - the number to be drawn.
-
-    [IN]  nLength - max. length of the number.
-
-    [IN]  pos - position on the screen.
-
-    [IN]  color - color of the number (yellow or blue).
-
-    [IN]  align - align mode of the number.
-
-  Return value:
-
-    None.
-
---*/
 {
-   UINT          nActualLength, i;
-   int           x, y;
-   LPCBITMAPRLE  rglpBitmap[10];
-
-   //
-   // Get the bitmaps. Blue starts from 29, Cyan from 56, Yellow from 19.
-   //
-   x = (color == kNumColorBlue) ? 29 : ((color == kNumColorCyan) ? 56 : 19);
-
-   for (i = 0; i < 10; i++)
-   {
-      rglpBitmap[i] = PAL_SpriteGetFrame(gpSpriteUI, (UINT)x + i);
-   }
-
-   i = iNum;
-   nActualLength = 0;
-
-   //
-   // Calculate the actual length of the number.
-   //
-   while (i > 0)
-   {
-      i /= 10;
-      nActualLength++;
-   }
-
-   if (nActualLength > nLength)
-   {
-      nActualLength = nLength;
-   }
-   else if (nActualLength == 0)
-   {
-      nActualLength = 1;
-   }
-
-   x = PAL_X(pos) - 6;
-   y = PAL_Y(pos);
-
-   switch (align)
-   {
-   case kNumAlignLeft:
-      x += 6 * nActualLength;
-      break;
-
-   case kNumAlignMid:
-      x += 3 * (nLength + nActualLength);
-      break;
-
-   case kNumAlignRight:
-      x += 6 * nLength;
-      break;
-   }
-
-   //
-   // Draw the number.
-   //
-   while (nActualLength-- > 0)
-   {
-      PAL_RLEBlitToSurface(rglpBitmap[iNum % 10], gpScreen, PAL_XY(x, y));
-      x -= 6;
-      iNum /= 10;
-   }
+   static const NUMCOLOREX map[] = { kNumColorExYellow, kNumColorExBlue, kNumColorExCyan };
+   PAL_DrawNumberEx(iNum, nLength, pos, map[color], align);
 }
 
 VOID
