@@ -698,6 +698,12 @@ PAL_SetPlayerStatus(
    WORD         wNumRound
 );
 
+BOOL
+PAL_SetPlayerStatusAll(
+   WORD         wStatusID,
+   WORD         wNumRound
+);
+
 VOID
 PAL_RemovePlayerStatus(
    WORD         wPlayerRole,

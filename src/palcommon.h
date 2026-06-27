@@ -81,6 +81,12 @@ typedef DWORD           PAL_POS;
 // maximum number of level
 #define     MAX_LEVELS                   99
 
+#define     MAX_PROPERTY_VALUE           9999
+
+#define     EX_POISON_CAN_PIERCE_LEVEL              10
+#define     EX_POISON_PERSIST_AFTER_REVIVE          97
+#define     EX_MAX_VISIBLE_POISON_LEVEL             98
+
 #define     MINIMAL_WORD_COUNT           (MAX_OBJECTS + 13)
 
 typedef enum tagPALDIRECTION

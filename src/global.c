@@ -1219,15 +1219,18 @@ PAL_AddPoisonForPlayer(
    for (i = 0; i < MAX_POISONS; i++)
    {
       w = gpGlobals->rgPoisonStatus[i][index].wPoisonID;
-
-      if (w == 0)
-      {
-         break;
-      }
-
       if (w == wPoisonID)
       {
          return; // already poisoned
+      }
+   }
+
+   for (i = 0; i < MAX_POISONS; i++)
+   {
+      w = gpGlobals->rgPoisonStatus[i][index].wPoisonID;
+      if (w == 0)
+      {
+         break;
       }
    }
 
@@ -1951,6 +1954,22 @@ PAL_SetPlayerStatus(
    }
 }
 
+BOOL
+PAL_SetPlayerStatusAll(
+   WORD         wStatusID,
+   WORD         wNumRound
+)
+{
+   BOOL fSuccess = TRUE;
+   WORD w, i;
+   for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
+   {
+      w = gpGlobals->rgParty[i].wPlayerRole;
+      PAL_SetPlayerStatus(w, wStatusID, wNumRound);
+   }
+   return fSuccess;
+}
+
 VOID
 PAL_RemovePlayerStatus(
    WORD         wPlayerRole,
@@ -2065,7 +2084,7 @@ PAL_PlayerLevelUp(
       gpGlobals->g.PlayerRoles.rgwFleeRate[wPlayerRole] += 2;
    }
 
-#define STAT_LIMIT(t) { if ((t) > 999) (t) = 999; }
+#define STAT_LIMIT(t) { if ((t) > MAX_PROPERTY_VALUE) (t) = MAX_PROPERTY_VALUE; }
    STAT_LIMIT(gpGlobals->g.PlayerRoles.rgwMaxHP[wPlayerRole]);
    STAT_LIMIT(gpGlobals->g.PlayerRoles.rgwMaxMP[wPlayerRole]);
    STAT_LIMIT(gpGlobals->g.PlayerRoles.rgwAttackStrength[wPlayerRole]);

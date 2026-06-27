@@ -1027,7 +1027,7 @@ PAL_InterpretInstruction(
                gpGlobals->g.PlayerRoles.rgwHP[w] =
                   gpGlobals->g.PlayerRoles.rgwMaxHP[w] * pScript->rgwOperand[1] / 10;
 
-               PAL_CurePoisonByLevel(w, 3);
+               PAL_CurePoisonByLevel(w, EX_POISON_PERSIST_AFTER_REVIVE);
                for (x = 0; x < kStatusAll; x++)
                {
                   PAL_RemovePlayerStatus(w, x);
@@ -1047,7 +1047,7 @@ PAL_InterpretInstruction(
             gpGlobals->g.PlayerRoles.rgwHP[wEventObjectID] =
                gpGlobals->g.PlayerRoles.rgwMaxHP[wEventObjectID] * pScript->rgwOperand[1] / 10;
 
-            PAL_CurePoisonByLevel(wEventObjectID, 3);
+            PAL_CurePoisonByLevel(wEventObjectID, EX_POISON_PERSIST_AFTER_REVIVE);
             for (x = 0; x < kStatusAll; x++)
             {
                PAL_RemovePlayerStatus(wEventObjectID, x);
@@ -1216,28 +1216,32 @@ PAL_InterpretInstruction(
       //
       // Apply poison to player
       //
-      if (pScript->rgwOperand[0])
       {
-         //
-         // Apply to everyone
-         //
-         for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
+         WORD wPoisonId = pScript->rgwOperand[1];
+         BOOL fSureHit = gpGlobals->g.rgObject[wPoisonId].poison.wPoisonLevel >= EX_POISON_CAN_PIERCE_LEVEL;
+         if (pScript->rgwOperand[0])
          {
-            w = gpGlobals->rgParty[i].wPlayerRole;
-            if (RandomLong(1, 100) > PAL_GetPlayerPoisonResistance(w))
+            //
+            // Apply to everyone
+            //
+            for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
             {
-               PAL_AddPoisonForPlayer(w, pScript->rgwOperand[1]);
+               w = gpGlobals->rgParty[i].wPlayerRole;
+               if (fSureHit || RandomLong(1, 100) > PAL_GetPlayerPoisonResistance(w))
+               {
+                  PAL_AddPoisonForPlayer(w, wPoisonId);
+               }
             }
          }
-      }
-      else
-      {
-         //
-         // Apply to one player
-         //
-         if (RandomLong(1, 100) > PAL_GetPlayerPoisonResistance(wEventObjectID))
+         else
          {
-            PAL_AddPoisonForPlayer(wEventObjectID, pScript->rgwOperand[1]);
+            //
+            // Apply to one player
+            //
+            if (fSureHit || RandomLong(1, 100) > PAL_GetPlayerPoisonResistance(wEventObjectID))
+            {
+               PAL_AddPoisonForPlayer(wEventObjectID, wPoisonId);
+            }
          }
       }
       break;
@@ -1326,7 +1330,11 @@ PAL_InterpretInstruction(
       //
       // Set the status for player
       //
-      PAL_SetPlayerStatus(wEventObjectID, pScript->rgwOperand[0], pScript->rgwOperand[1]);
+      if (pScript->rgwOperand[2] > 0) {
+         PAL_SetPlayerStatusAll(pScript->rgwOperand[0], pScript->rgwOperand[1]);
+      } else {
+         PAL_SetPlayerStatus(wEventObjectID, pScript->rgwOperand[0], pScript->rgwOperand[1]);
+      }
       break;
 
    case 0x002E:
