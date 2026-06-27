@@ -776,6 +776,7 @@ PAL_DrawSmallText(
 )
 {
 	int x = PAL_X(pos), y = PAL_Y(pos);
+	if (pszText == NULL || lpSurface == NULL) return;
 	while (*pszText)
 	{
 		uint32_t cp = PAL_DecodeUTF8(&pszText);

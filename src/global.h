@@ -541,7 +541,6 @@ typedef struct tagGLOBALVARS
    ALLEXPERIENCE    Exp;                 // experience status
    POISONSTATUS     rgPoisonStatus[MAX_POISONS][MAX_PLAYABLE_PLAYER_ROLES]; // poison status
    INVENTORY        rgInventory[MAX_INVENTORY];  // inventory status
-   LPOBJECTDESC     lpObjectDesc;
    DWORD            dwFrameNum;
 } GLOBALVARS, *LPGLOBALVARS;
 

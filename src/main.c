@@ -97,6 +97,7 @@ PAL_Init(
       TerminateOnError("Could not load fonts: %d.\n", e);
    }
 
+   PAL_LoadObjectDesc();
 
    PAL_InitInput();
    PAL_InitResources();

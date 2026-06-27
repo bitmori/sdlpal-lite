@@ -117,7 +117,7 @@ PAL_MagicSelectionMenuUpdate(
    //
    PAL_CreateBoxWithShadow(PAL_XY(10, 42 + iBoxYOffset), iLinesPerPage - 1, 16, 1, FALSE, 0);
 
-   if (gpGlobals->lpObjectDesc == NULL)
+   if (!PAL_HasObjectDesc())
    {
       //
       // Draw the cash amount.
@@ -138,36 +138,14 @@ PAL_MagicSelectionMenuUpdate(
    }
    else
    {
-      WCHAR szDesc[512], *next;
-      const WCHAR *d = PAL_GetObjectDesc(gpGlobals->lpObjectDesc, rgMagicItem[g_iCurrentItem].wMagic);
+      LPCSTR d = PAL_GetObjectDesc(rgMagicItem[g_iCurrentItem].wMagic);
 
       //
       // Draw the magic description.
       //
       if (d != NULL)
       {
-         k = 3;
-         wcscpy(szDesc, d);
-         d = szDesc;
-
-         while (TRUE)
-         {
-            next = wcschr(d, '*');
-            if (next != NULL)
-            {
-               *next++ = '\0';
-            }
-
-            PAL_DrawText(d, PAL_XY(102, k), DESCTEXT_COLOR, TRUE, FALSE, FALSE);
-            k += 16;
-
-            if (next == NULL)
-            {
-               break;
-            }
-
-            d = next;
-         }
+         PAL_DrawObjectDesc(d, gpScreen, 102, 3, 0x3C);
       }
 
       //

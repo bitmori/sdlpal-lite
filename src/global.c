@@ -145,7 +145,6 @@ PAL_InitGlobals(
    //
    Decompress = YJ1_Decompress;
 
-   gpGlobals->lpObjectDesc = PAL_LoadObjectDesc("desc.dat");
    gpGlobals->bCurrentSaveSlot = 1;
 
    return 0;
@@ -193,11 +192,6 @@ PAL_FreeGlobals(
    free(gpGlobals->g.lprgMagic);
    free(gpGlobals->g.lprgBattleField);
    free(gpGlobals->g.lprgLevelUpMagic);
-
-   //
-   // Free the object description data
-   //
-   PAL_FreeObjectDesc(gpGlobals->lpObjectDesc);
 
    //
    // Clear the instance

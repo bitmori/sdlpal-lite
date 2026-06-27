@@ -236,35 +236,12 @@ PAL_ItemSelectMenuUpdate(
    //
    // Draw the description of the selected item
    //
-   if (!g_fNoDesc && gpGlobals->lpObjectDesc != NULL)
+   if (!g_fNoDesc && PAL_HasObjectDesc())
    {
-      WCHAR szDesc[512], *next;
-      const WCHAR *d = PAL_GetObjectDesc(gpGlobals->lpObjectDesc, wObject);
-
+      LPCSTR d = PAL_GetObjectDesc(wObject);
       if (d != NULL)
       {
-         k = 150;
-         wcscpy(szDesc, d);
-         d = szDesc;
-
-         while (TRUE)
-         {
-            next = wcschr(d, '*');
-            if (next != NULL)
-            {
-               *next++ = '\0';
-            }
-
-            PAL_DrawText(d, PAL_XY(75, k), DESCTEXT_COLOR, TRUE, FALSE, FALSE);
-            k += 16;
-
-            if (next == NULL)
-            {
-               break;
-            }
-
-            d = next;
-         }
+         PAL_DrawObjectDesc(d, gpScreen, 75, 150, 0x3C);
       }
    }
 

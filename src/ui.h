@@ -137,13 +137,6 @@ typedef struct tagMENUITEM
 } MENUITEM, *LPMENUITEM;
 typedef const MENUITEM* LPCMENUITEM;
 
-typedef struct tagOBJECTDESC
-{
-   WORD                        wObjectID;
-   LPWSTR                      lpDesc;
-   struct tagOBJECTDESC       *next;
-} OBJECTDESC, *LPOBJECTDESC;
-
 typedef VOID (*LPITEMCHANGED_CALLBACK)(WORD);
 
 #define MENUITEM_VALUE_CANCELLED      0xFFFF
@@ -274,22 +267,6 @@ PAL_WordMaxWidth(
 INT
 PAL_WordWidth(
    INT            nWordIndex
-);
-
-LPOBJECTDESC
-PAL_LoadObjectDesc(
-   LPCSTR          lpszFileName
-);
-
-VOID
-PAL_FreeObjectDesc(
-   LPOBJECTDESC    lpObjectDesc
-);
-
-LPCWSTR
-PAL_GetObjectDesc(
-   LPOBJECTDESC   lpObjectDesc,
-   WORD           wObjectID
 );
 
 extern LPSPRITE gpSpriteUI;

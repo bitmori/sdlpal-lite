@@ -303,78 +303,13 @@ PAL_ReadMessageFile(
 				break;
 			case ST_DESC:
 				//
-				// Check if to end setting list
+				// Check if to end description list
 				//
 				if (strncmp(buffer, "[END DESCRIPTIONS]", 18) == 0)
 				{
-					// End setting list
 					state = ST_OUTSIDE;
 				}
-				else
-				{
-					char *line = buffer;
-					while (*buffer && iswspace(*buffer)) line++;
-					//
-					// Skip comments starting with '#'
-					//
-					if (*line && *line != '#')
-					{
-						//
-						// Split the index and value
-						//
-						LPSTR p = strchr(line, '=');
-						int wlen,strip_count=2;
-						if (p)
-						{
-							int index;
-
-							//
-							// Remove the trailing spaces
-							//
-							LPSTR end = line + strlen(line);
-							if (end > line && end[-1] == '\n') *(--end) = 0;
-							if (FALSE) while (end > line && iswspace(end[-1])) *(--end) = 0;
-
-							*p++ = '\0';
-							while(strip_count--){
-								if(p[strlen(p)-1]=='\r') p[strlen(p)-1]='\0';
-								if(p[strlen(p)-1]=='\n') p[strlen(p)-1]='\0';
-							}
-							wlen = PAL_MultiByteToWideCharCP(CP_UTF_8, p, -1, NULL, 0);
-
-							//
-							// Parse the index and pass out value
-							//
-							sscanf(line, "%x", &index);
-							LPOBJECTDESC lpObjectDesc = gpGlobals->lpObjectDesc;
-                     LPOBJECTDESC prevObjectDesc = lpObjectDesc;
-                     BOOL isFirst = gpGlobals->lpObjectDesc == NULL;
-							while (lpObjectDesc != NULL)
-							{
-								if (lpObjectDesc->wObjectID == index)
-								{
-									break;
-								}
-
-                        prevObjectDesc = lpObjectDesc;
-								lpObjectDesc = lpObjectDesc->next;
-							}
-							if( !lpObjectDesc )
-                     {
-                        lpObjectDesc = UTIL_calloc(1, sizeof(OBJECTDESC));
-                        memset(lpObjectDesc,0,sizeof(OBJECTDESC));
-                        if( prevObjectDesc )
-                           prevObjectDesc->next = lpObjectDesc;
-                     }
-                     if( isFirst )
-                        gpGlobals->lpObjectDesc = lpObjectDesc;
-
-                     lpObjectDesc->wObjectID = index;
-                     lpObjectDesc->lpDesc = (LPWSTR)UTIL_calloc(1, wlen * sizeof(WCHAR));
-                     PAL_MultiByteToWideCharCP(CP_UTF_8, p, -1, lpObjectDesc->lpDesc, wlen);
-						}
-					}
-				}
+				// Descriptions are now loaded from desc.json; skip this data.
 				break;
 			case ST_SETTING:
 				//
