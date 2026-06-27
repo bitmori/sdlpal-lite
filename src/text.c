@@ -2172,7 +2172,7 @@ PAL_swprintf(
 				{
 					// For ANSI character, put it into the internal buffer
 					if (wide)
-						chr_buf[0] = va_arg(ap, WCHAR);
+						chr_buf[0] = (WCHAR)va_arg(ap, int);
 					else
 						chr_buf[0] = va_arg(ap, int);
 					buf = chr_buf; len = 1;

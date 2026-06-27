@@ -594,7 +594,7 @@ UTIL_GetFullPathName(
 		result = internal_buffer[PAL_MAX_GLOBAL_BUFFERS];
 	}
 
-#if !defined(PAL_FILESYSTEM_IGNORE_CASE) || !PAL_FILESYSTEM_IGNORE_CASE
+#if (!defined(PAL_FILESYSTEM_IGNORE_CASE) || !PAL_FILESYSTEM_IGNORE_CASE) && !defined(_WIN32)
 	if (result == NULL)
 	{
 		size_t pos = strspn(_sub, PAL_PATH_SEPARATORS);
