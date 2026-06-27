@@ -2085,14 +2085,22 @@ PAL_InterpretInstruction(
       // Set the player party
       //
       gpGlobals->wMaxPartyMemberIndex = 0;
-      for (i = 0; i < 3; i++)
       {
-         if (pScript->rgwOperand[i] != 0)
-         {
-            gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex].wPlayerRole =
-               pScript->rgwOperand[i] - 1;
+         WORD members[4] = {
+            pScript->rgwOperand[0],
+            pScript->rgwOperand[1],
+            (WORD)(pScript->rgwOperand[2] & 0x00FF),
+            (WORD)(pScript->rgwOperand[2] >> 8)
+         };
 
-            gpGlobals->wMaxPartyMemberIndex++;
+         for (i = 0; i < 4; i++)
+         {
+            if (members[i] != 0)
+            {
+               gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex].wPlayerRole =
+                  members[i] - 1;
+               gpGlobals->wMaxPartyMemberIndex++;
+            }
          }
       }
 

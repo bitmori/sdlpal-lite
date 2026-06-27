@@ -410,6 +410,10 @@ PAL_MagicSelectionMenu(
 
       w = 45;
 
+      if (gpGlobals->wMaxPartyMemberIndex >= 3) {
+         w = 10;
+      }
+
       for (i = 0; i <= gpGlobals->wMaxPartyMemberIndex; i++)
       {
          PAL_PlayerInfoBox(PAL_XY(w, 165), gpGlobals->rgParty[i].wPlayerRole, 100,

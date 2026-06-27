@@ -22,7 +22,7 @@
 
 #include "main.h"
 
-extern WORD g_rgPlayerPos[3][3][2];
+extern WORD g_rgPlayerPos[4][4][2];
 
 static int g_iCurMiscMenuItem = 0;
 static int g_iCurSubMenuItem = 0;
@@ -1055,8 +1055,14 @@ PAL_BattleUIUpdate(
             w = 0;
          }
 
-         PAL_PlayerInfoBox(PAL_XY(91 + 77 * i, 165), wPlayerRole,
-            w, j, FALSE);
+         if (gpGlobals->wMaxPartyMemberIndex >= 3)
+         {
+            PAL_PlayerInfoBox(PAL_XY(14 + 77 * i, 165), wPlayerRole, w, j, FALSE);
+         }
+         else
+         {
+            PAL_PlayerInfoBox(PAL_XY(91 + 77 * i, 165), wPlayerRole, w, j, FALSE);
+         }
       }
    }
 
@@ -1168,16 +1174,17 @@ PAL_BattleUIUpdate(
       // Draw the icons
       //
       {
+         int y = (gpGlobals->wMaxPartyMemberIndex >= 3) ? 37 : 0;
          struct {
             int               iSpriteNum;
             PAL_POS           pos;
             BATTLEUIACTION    action;
          } rgItems[] =
          {
-            {SPRITENUM_BATTLEICON_ATTACK,    PAL_XY(27, 140), kBattleUIActionAttack},
-            {SPRITENUM_BATTLEICON_MAGIC,     PAL_XY(0, 155),  kBattleUIActionMagic},
-            {SPRITENUM_BATTLEICON_COOPMAGIC, PAL_XY(54, 155), kBattleUIActionCoopMagic},
-            {SPRITENUM_BATTLEICON_MISCMENU,  PAL_XY(27, 170), kBattleUIActionMisc}
+            {SPRITENUM_BATTLEICON_ATTACK,    PAL_XY(27, 140 - y), kBattleUIActionAttack},
+            {SPRITENUM_BATTLEICON_MAGIC,     PAL_XY(0, 155 - y),  kBattleUIActionMagic},
+            {SPRITENUM_BATTLEICON_COOPMAGIC, PAL_XY(54, 155 - y), kBattleUIActionCoopMagic},
+            {SPRITENUM_BATTLEICON_MISCMENU,  PAL_XY(27, 170 - y), kBattleUIActionMisc}
          };
 
          if (g_Battle.UI.MenuState == kBattleMenuMain)

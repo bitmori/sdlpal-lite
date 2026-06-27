@@ -2933,7 +2933,7 @@ PAL_BattlePlayerPerformAction(
    int      i, j, t;
    WORD     str, def, res, wObject, wMagicNum;
    BOOL     fCritical;
-   WORD     rgwCoopPos[3][2] = {{208, 157}, {234, 170}, {260, 183}};
+   WORD     rgwCoopPos[4][2] = {{208, 157}, {234, 170}, {260, 183}, {286, 196}};
 
    g_Battle.wMovingPlayerIndex = wPlayerIndex;
    g_Battle.iBlow = 0;

@@ -39,7 +39,7 @@ typedef DWORD           PAL_POS;
 #define PAL_XY_OFFSET(xy, x, y)    (PAL_POS)(((((INT)(y) << 16) & 0xFFFF0000) + ((xy) & 0xFFFF0000)) | (((INT)(x) & 0xFFFF) + ((xy) & 0xFFFF)))
 
 // maximum number of players in party
-#define     MAX_PLAYERS_IN_PARTY         3
+#define     MAX_PLAYERS_IN_PARTY         4
 
 // total number of possible player roles
 #define     MAX_PLAYER_ROLES             6

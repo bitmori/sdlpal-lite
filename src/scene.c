@@ -631,7 +631,7 @@ PAL_UpdatePartyGestures(
    int              iStepFrameFollower = 0, iStepFrameLeader = 0;
    int              i;
 
-   if (fWalking)
+   if (fWalking && gpGlobals->wMaxPartyMemberIndex < 3)
    {
       //
       // Update the gesture for party leader
@@ -716,6 +716,69 @@ PAL_UpdatePartyGestures(
             gpGlobals->rgTrail[3].y - PAL_Y(gpGlobals->viewport);
          gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex + 1].wFrame =
             gpGlobals->rgTrail[3].wDirection * 3 + iStepFrameFollower;
+      }
+   }
+   else if (fWalking && gpGlobals->wMaxPartyMemberIndex >= 3)
+   {
+      s_iThisStepFrame = (s_iThisStepFrame + 1) % 4;
+      if (s_iThisStepFrame & 1)
+      {
+         iStepFrameLeader = (s_iThisStepFrame + 1) / 2;
+         iStepFrameFollower = 3 - iStepFrameLeader;
+      }
+      else
+      {
+         iStepFrameLeader = 0;
+         iStepFrameFollower = 0;
+      }
+
+      gpGlobals->rgParty[0].x = PAL_X(gpGlobals->partyoffset);
+      gpGlobals->rgParty[0].y = PAL_Y(gpGlobals->partyoffset);
+
+      if (gpGlobals->g.PlayerRoles.rgwWalkFrames[gpGlobals->rgParty[0].wPlayerRole] == 4)
+      {
+         gpGlobals->rgParty[0].wFrame = gpGlobals->wPartyDirection * 4 + s_iThisStepFrame;
+      }
+      else
+      {
+         gpGlobals->rgParty[0].wFrame = gpGlobals->wPartyDirection * 3 + iStepFrameLeader;
+      }
+
+      for (i = 1; i <= (short)gpGlobals->wMaxPartyMemberIndex; i++)
+      {
+         gpGlobals->rgParty[i].x = gpGlobals->rgTrail[i - 1].x - PAL_X(gpGlobals->viewport);
+         gpGlobals->rgParty[i].y = gpGlobals->rgTrail[i - 1].y - PAL_Y(gpGlobals->viewport);
+
+         gpGlobals->rgParty[i].x +=
+            ((gpGlobals->rgTrail[i - 1].wDirection == kDirWest || gpGlobals->rgTrail[i - 1].wDirection == kDirSouth) ? 16 : -16);
+         gpGlobals->rgParty[i].y +=
+            ((gpGlobals->rgTrail[i - 1].wDirection == kDirWest || gpGlobals->rgTrail[i - 1].wDirection == kDirNorth) ? 8 : -8);
+
+         if (PAL_CheckObstacle(PAL_XY(gpGlobals->rgParty[i].x + PAL_X(gpGlobals->viewport),
+                                       gpGlobals->rgParty[i].y + PAL_Y(gpGlobals->viewport)), TRUE, 0))
+         {
+            gpGlobals->rgParty[i].x = gpGlobals->rgTrail[i - 1].x - PAL_X(gpGlobals->viewport);
+            gpGlobals->rgParty[i].y = gpGlobals->rgTrail[i - 1].y - PAL_Y(gpGlobals->viewport);
+         }
+
+         if (gpGlobals->g.PlayerRoles.rgwWalkFrames[gpGlobals->rgParty[i].wPlayerRole] == 4)
+         {
+            gpGlobals->rgParty[i].wFrame = gpGlobals->rgTrail[i - 1].wDirection * 4 + s_iThisStepFrame;
+         }
+         else
+         {
+            gpGlobals->rgParty[i].wFrame = gpGlobals->rgTrail[i - 1].wDirection * 3 + iStepFrameLeader;
+         }
+      }
+
+      if (gpGlobals->nFollower > 0)
+      {
+         gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex + 1].x =
+            gpGlobals->rgTrail[gpGlobals->wMaxPartyMemberIndex + 1].x - PAL_X(gpGlobals->viewport);
+         gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex + 1].y =
+            gpGlobals->rgTrail[gpGlobals->wMaxPartyMemberIndex + 1].y - PAL_Y(gpGlobals->viewport);
+         gpGlobals->rgParty[gpGlobals->wMaxPartyMemberIndex + 1].wFrame =
+            gpGlobals->rgTrail[gpGlobals->wMaxPartyMemberIndex + 1].wDirection * 3 + iStepFrameFollower;
       }
    }
    else
