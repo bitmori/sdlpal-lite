@@ -157,6 +157,19 @@ typedef enum tagPALFILE {
 
 PAL_C_LINKAGE_BEGIN
 
+#define RLE_BLIT_MIRROR  0x01
+#define RLE_BLIT_SHADOW  0x02
+
+INT
+PAL_RLEBlitOne(
+   LPCBITMAPRLE      lpBitmapRLE,
+   SDL_Surface      *lpDstSurface,
+   PAL_POS           pos,
+   UINT              flags,
+   BYTE              bMonoColor,
+   INT               iColorShift
+);
+
 INT
 PAL_RLEBlitToSurface(
    LPCBITMAPRLE      lpBitmapRLE,
@@ -186,15 +199,6 @@ PAL_RLEBlitWithColorShift(
    LPCBITMAPRLE      lpBitmapRLE,
    SDL_Surface      *lpDstSurface,
    PAL_POS           pos,
-   INT               iColorShift
-);
-
-INT
-PAL_RLEBlitMonoColor(
-   LPCBITMAPRLE      lpBitmapRLE,
-   SDL_Surface      *lpDstSurface,
-   PAL_POS           pos,
-   BYTE              bColor,
    INT               iColorShift
 );
 

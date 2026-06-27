@@ -2212,32 +2212,15 @@ PAL_BattleShowPlayerOffMagicAnim(
          x += (SHORT)(gpGlobals->g.lprgMagic[iMagicNum].wXOffset) * (bMirrorAnim ? -1 : 1);
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         if (g_Battle.fMagicRenderMirror)
-         {
-            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
-         else if (g_Battle.bMagicMonoColor != 0)
-         {
-            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
-         }
-         else
-         {
-            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
+         PAL_RLEBlitOne(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+            g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            if (bMirrorAnim)
-            {
-               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
-            else
-            {
-               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
+            PAL_RLEBlitOne(b, g_Battle.lpBackground,
+               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               bMirrorAnim ? RLE_BLIT_MIRROR : 0, 0, 0);
          }
       }
       else if (gpGlobals->g.lprgMagic[iMagicNum].wType == kMagicTypeAttackAll)
@@ -2255,32 +2238,15 @@ PAL_BattleShowPlayerOffMagicAnim(
             x += (SHORT)(gpGlobals->g.lprgMagic[iMagicNum].wXOffset) * (bMirrorAnim ? -1 : 1);
             y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-            if (g_Battle.fMagicRenderMirror)
-            {
-               PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
-            else if (g_Battle.bMagicMonoColor != 0)
-            {
-               PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
-            }
-            else
-            {
-               PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
+            PAL_RLEBlitOne(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
             if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
                gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
             {
-               if (bMirrorAnim)
-               {
-                  PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
-                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-               }
-               else
-               {
-                  PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-               }
+               PAL_RLEBlitOne(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+                  bMirrorAnim ? RLE_BLIT_MIRROR : 0, 0, 0);
             }
          }
       }
@@ -2303,32 +2269,15 @@ PAL_BattleShowPlayerOffMagicAnim(
          x += (SHORT)(gpGlobals->g.lprgMagic[iMagicNum].wXOffset) * (bMirrorAnim ? -1 : 1);
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         if (g_Battle.fMagicRenderMirror)
-         {
-            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
-         else if (g_Battle.bMagicMonoColor != 0)
-         {
-            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
-         }
-         else
-         {
-            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
+         PAL_RLEBlitOne(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+            g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            if (bMirrorAnim)
-            {
-               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
-            else
-            {
-               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
+            PAL_RLEBlitOne(b, g_Battle.lpBackground,
+               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               bMirrorAnim ? RLE_BLIT_MIRROR : 0, 0, 0);
          }
       }
       else
@@ -2492,32 +2441,15 @@ PAL_BattleShowEnemyMagicAnim(
          x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         if (g_Battle.fMagicRenderMirror)
-         {
-            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
-         else if (g_Battle.bMagicMonoColor != 0)
-         {
-            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
-         }
-         else
-         {
-            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
+         PAL_RLEBlitOne(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+            g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            if (bMirrorAnim)
-            {
-               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
-            else
-            {
-               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
+            PAL_RLEBlitOne(b, g_Battle.lpBackground,
+               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               bMirrorAnim ? RLE_BLIT_MIRROR : 0, 0, 0);
          }
       }
       else if (gpGlobals->g.lprgMagic[iMagicNum].wType == kMagicTypeAttackAll)
@@ -2534,32 +2466,15 @@ PAL_BattleShowEnemyMagicAnim(
             x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
             y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-            if (g_Battle.fMagicRenderMirror)
-            {
-               PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
-            else if (g_Battle.bMagicMonoColor != 0)
-            {
-               PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
-            }
-            else
-            {
-               PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
+            PAL_RLEBlitOne(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
             if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
                gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
             {
-               if (bMirrorAnim)
-               {
-                  PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
-                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-               }
-               else
-               {
-                  PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                     PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-               }
+               PAL_RLEBlitOne(b, g_Battle.lpBackground,
+                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+                  bMirrorAnim ? RLE_BLIT_MIRROR : 0, 0, 0);
             }
          }
       }
@@ -2582,32 +2497,15 @@ PAL_BattleShowEnemyMagicAnim(
          x += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
          y += (SHORT)gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         if (g_Battle.fMagicRenderMirror)
-         {
-            PAL_RLEBlitToSurfaceInMirror(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
-         else if (g_Battle.bMagicMonoColor != 0)
-         {
-            PAL_RLEBlitMonoColor(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)), g_Battle.bMagicMonoColor, 0);
-         }
-         else
-         {
-            PAL_RLEBlitToSurface(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-         }
+         PAL_RLEBlitOne(b, gpScreen, PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+            g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
          if (i == l - 1 && gpGlobals->wScreenWave < 9 &&
             gpGlobals->g.lprgMagic[iMagicNum].wKeepEffect == 0xFFFF)
          {
-            if (bMirrorAnim)
-            {
-               PAL_RLEBlitToSurfaceInMirror(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
-            else
-            {
-               PAL_RLEBlitToSurface(b, g_Battle.lpBackground,
-                  PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
-            }
+            PAL_RLEBlitOne(b, g_Battle.lpBackground,
+               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               bMirrorAnim ? RLE_BLIT_MIRROR : 0, 0, 0);
          }
       }
       else

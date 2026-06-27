@@ -33,13 +33,206 @@ PAL_CalcShadowColor(
 }
 
 INT
+PAL_RLEBlitOne(
+   LPCBITMAPRLE      lpBitmapRLE,
+   SDL_Surface      *lpDstSurface,
+   PAL_POS           pos,
+   UINT              flags,
+   BYTE              bMonoColor,
+   INT               iColorShift
+)
+{
+   UINT          uiWidth, uiHeight, uiLen;
+   INT           dx = PAL_X(pos), dy = PAL_Y(pos);
+
+   if (lpBitmapRLE == NULL || lpDstSurface == NULL)
+      return -1;
+
+   if (lpBitmapRLE[0] == 0x02 && lpBitmapRLE[1] == 0x00 &&
+       lpBitmapRLE[2] == 0x00 && lpBitmapRLE[3] == 0x00)
+   {
+      lpBitmapRLE += 4;
+   }
+
+   uiWidth = lpBitmapRLE[0] | (lpBitmapRLE[1] << 8);
+   uiHeight = lpBitmapRLE[2] | (lpBitmapRLE[3] << 8);
+   uiLen = uiWidth * uiHeight;
+   lpBitmapRLE += 4;
+
+   if (flags & RLE_BLIT_MIRROR)
+   {
+      UINT i, k;
+      INT  y;
+      UINT uiSrcX = 0, uiSrcY = 0;
+      BYTE T;
+      LPBYTE p;
+
+      if (uiWidth + dx <= 0 || dx >= lpDstSurface->w ||
+          (INT)uiHeight + dy <= 0 || dy >= lpDstSurface->h)
+         return 0;
+
+      bMonoColor &= 0xF0;
+
+      for (i = 0; i < uiLen;)
+      {
+         T = *lpBitmapRLE++;
+         if ((T & 0x80) && T <= 0x80 + uiWidth)
+         {
+            i += T - 0x80;
+            uiSrcX += T - 0x80;
+            while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
+         }
+         else
+         {
+            UINT processed = 0;
+            UINT curSrcX = uiSrcX;
+
+            y = dy + uiSrcY;
+            if (y < 0 || y >= lpDstSurface->h)
+            {
+               lpBitmapRLE += T;
+               i += T;
+               uiSrcX += T;
+               while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
+               continue;
+            }
+
+            p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
+
+            while (processed < T)
+            {
+               UINT pixelsInRow = T - processed;
+               if (pixelsInRow > uiWidth - curSrcX)
+                  pixelsInRow = uiWidth - curSrcX;
+
+               {
+                  INT dstXStart = dx + (INT)uiWidth - 1 - (INT)curSrcX;
+                  INT dstXEnd = dx + (INT)uiWidth - 1 - (INT)(curSrcX + pixelsInRow - 1);
+                  INT clipLeft = dstXEnd < 0 ? 0 : dstXEnd;
+                  INT clipRight = dstXStart >= lpDstSurface->w ? lpDstSurface->w - 1 : dstXStart;
+
+                  if (clipLeft <= clipRight)
+                  {
+                     INT pxClippedLeft = clipLeft - dstXEnd;
+                     INT pxToDraw = clipRight - clipLeft + 1;
+                     for (k = 0; (INT)k < pxToDraw; k++)
+                     {
+                        BYTE src = lpBitmapRLE[processed + pxClippedLeft + k];
+                        if (bMonoColor)
+                        {
+                           BYTE b = src & 0x0F;
+                           if ((INT)b + iColorShift > 0x0F) b = 0x0F;
+                           else if ((INT)b + iColorShift < 0) b = 0;
+                           else b += iColorShift;
+                           p[clipRight - k] = b | bMonoColor;
+                        }
+                        else if (iColorShift)
+                        {
+                           BYTE b = src & 0x0F;
+                           if ((INT)b + iColorShift > 0x0F) b = 0x0F;
+                           else if ((INT)b + iColorShift < 0) b = 0;
+                           else b += iColorShift;
+                           p[clipRight - k] = b | (src & 0xF0);
+                        }
+                        else
+                        {
+                           p[clipRight - k] = src;
+                        }
+                     }
+                  }
+               }
+
+               processed += pixelsInRow;
+               curSrcX += pixelsInRow;
+               if (curSrcX >= uiWidth)
+               {
+                  curSrcX = 0;
+                  y++;
+                  if (y >= lpDstSurface->h) break;
+                  p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
+               }
+            }
+
+            lpBitmapRLE += T;
+            i += T;
+            uiSrcX += T;
+            while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
+         }
+      }
+   }
+   else
+   {
+      UINT i, j;
+      INT  x, y;
+      BYTE T;
+      BOOL bShadow = (flags & RLE_BLIT_SHADOW) ? TRUE : FALSE;
+
+      bMonoColor &= 0xF0;
+
+      for (i = 0; i < uiLen;)
+      {
+         T = *lpBitmapRLE++;
+         if ((T & 0x80) && T <= 0x80 + uiWidth)
+         {
+            i += T - 0x80;
+         }
+         else
+         {
+            for (j = 0; j < T; j++)
+            {
+               y = (i + j) / uiWidth + dy;
+               x = (i + j) % uiWidth + dx;
+
+               if (x < 0) { j += -x - 1; continue; }
+               else if (x >= lpDstSurface->w) { j += x - lpDstSurface->w; continue; }
+               if (y < 0) { j += -y * uiWidth - 1; continue; }
+               else if (y >= lpDstSurface->h) { goto end; }
+
+               LPBYTE dst = &((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x];
+
+               if (bShadow)
+               {
+                  *dst = PAL_CalcShadowColor(*dst);
+               }
+               else if (bMonoColor)
+               {
+                  BYTE b = lpBitmapRLE[j] & 0x0F;
+                  if ((INT)b + iColorShift > 0x0F) b = 0x0F;
+                  else if ((INT)b + iColorShift < 0) b = 0;
+                  else b += iColorShift;
+                  *dst = b | bMonoColor;
+               }
+               else if (iColorShift)
+               {
+                  BYTE b = lpBitmapRLE[j] & 0x0F;
+                  if ((INT)b + iColorShift > 0x0F) b = 0x0F;
+                  else if ((INT)b + iColorShift < 0) b = 0;
+                  else b += iColorShift;
+                  *dst = b | (lpBitmapRLE[j] & 0xF0);
+               }
+               else
+               {
+                  *dst = lpBitmapRLE[j];
+               }
+            }
+            lpBitmapRLE += T;
+            i += T;
+         }
+      }
+   end:;
+   }
+
+   return 0;
+}
+
+INT
 PAL_RLEBlitToSurface(
    LPCBITMAPRLE      lpBitmapRLE,
    SDL_Surface      *lpDstSurface,
    PAL_POS           pos
 )
 {
-    return PAL_RLEBlitToSurfaceWithShadow ( lpBitmapRLE, lpDstSurface, pos, FALSE );
+   return PAL_RLEBlitOne(lpBitmapRLE, lpDstSurface, pos, 0, 0, 0);
 }
 
 INT
@@ -49,130 +242,9 @@ PAL_RLEBlitToSurfaceWithShadow(
    PAL_POS           pos,
    BOOL              bShadow
 )
-/*++
-  Purpose:
-
-    Blit an RLE-compressed bitmap to an SDL surface.
-    NOTE: Assume the surface is already locked, and the surface is a 8-bit one.
-
-  Parameters:
-
-    [IN]  lpBitmapRLE - pointer to the RLE-compressed bitmap to be decoded.
-
-    [OUT] lpDstSurface - pointer to the destination SDL surface.
-
-    [IN]  pos - position of the destination area.
-
-    [IN]  bShadow - flag to mention whether blit source color or just shadow.
-
-  Return value:
-
-    0 = success, -1 = error.
-
---*/
 {
-   UINT          i, j;
-   INT           x, y;
-   UINT          uiLen       = 0;
-   UINT          uiWidth     = 0;
-   UINT          uiHeight    = 0;
-   BYTE          T;
-   INT           dx          = PAL_X(pos);
-   INT           dy          = PAL_Y(pos);
-
-   //
-   // Check for NULL pointer.
-   //
-   if (lpBitmapRLE == NULL || lpDstSurface == NULL)
-   {
-      return -1;
-   }
-
-   //
-   // Skip the 0x00000002 in the file header.
-   //
-   if (lpBitmapRLE[0] == 0x02 && lpBitmapRLE[1] == 0x00 &&
-      lpBitmapRLE[2] == 0x00 && lpBitmapRLE[3] == 0x00)
-   {
-      lpBitmapRLE += 4;
-   }
-
-   //
-   // Get the width and height of the bitmap.
-   //
-   uiWidth = lpBitmapRLE[0] | (lpBitmapRLE[1] << 8);
-   uiHeight = lpBitmapRLE[2] | (lpBitmapRLE[3] << 8);
-
-   //
-   // Calculate the total length of the bitmap.
-   // The bitmap is 8-bpp, each pixel will use 1 byte.
-   //
-   uiLen = uiWidth * uiHeight;
-
-   //
-   // Start decoding and blitting the bitmap.
-   //
-   lpBitmapRLE += 4;
-   for (i = 0; i < uiLen;)
-   {
-      T = *lpBitmapRLE++;
-      if ((T & 0x80) && T <= 0x80 + uiWidth)
-      {
-         i += T - 0x80;
-      }
-      else
-      {
-         for (j = 0; j < T; j++)
-         {
-            //
-            // Calculate the destination coordination.
-            // FIXME: This could be optimized
-            //
-            y = (i + j) / uiWidth + dy;
-            x = (i + j) % uiWidth + dx;
-
-            //
-            // Skip the points which are out of the surface.
-            //
-            if (x < 0)
-            {
-               j += -x - 1;
-               continue;
-            }
-            else if (x >= lpDstSurface->w)
-            {
-               j += x - lpDstSurface->w;
-               continue;
-            }
-
-            if (y < 0)
-            {
-               j += -y * uiWidth - 1;
-               continue;
-            }
-            else if (y >= lpDstSurface->h)
-            {
-               goto end; // No more pixels needed, break out
-            }
-
-            //
-            // Put the pixel onto the surface (FIXME: inefficient).
-            //
-            if(bShadow)
-               ((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x] = PAL_CalcShadowColor(((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x]);
-            else
-               ((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x] = lpBitmapRLE[j];
-         }
-         lpBitmapRLE += T;
-         i += T;
-      }
-   }
-
-end:
-   //
-   // Success
-   //
-   return 0;
+   return PAL_RLEBlitOne(lpBitmapRLE, lpDstSurface, pos,
+      bShadow ? RLE_BLIT_SHADOW : 0, 0, 0);
 }
 
 INT
@@ -182,142 +254,8 @@ PAL_RLEBlitWithColorShift(
    PAL_POS           pos,
    INT               iColorShift
 )
-/*++
-  Purpose:
-
-    Blit an RLE-compressed bitmap to an SDL surface.
-    NOTE: Assume the surface is already locked, and the surface is a 8-bit one.
-
-  Parameters:
-
-    [IN]  lpBitmapRLE - pointer to the RLE-compressed bitmap to be decoded.
-
-    [OUT] lpDstSurface - pointer to the destination SDL surface.
-
-    [IN]  pos - position of the destination area.
-
-    [IN]  iColorShift - shift the color by this value.
-
-  Return value:
-
-    0 = success, -1 = error.
-
---*/
 {
-   UINT          i, j;
-   INT           x, y;
-   UINT          uiLen       = 0;
-   UINT          uiWidth     = 0;
-   UINT          uiHeight    = 0;
-   BYTE          T, b;
-   INT           dx          = PAL_X(pos);
-   INT           dy          = PAL_Y(pos);
-
-   //
-   // Check for NULL pointer.
-   //
-   if (lpBitmapRLE == NULL || lpDstSurface == NULL)
-   {
-      return -1;
-   }
-
-   //
-   // Skip the 0x00000002 in the file header.
-   //
-   if (lpBitmapRLE[0] == 0x02 && lpBitmapRLE[1] == 0x00 &&
-      lpBitmapRLE[2] == 0x00 && lpBitmapRLE[3] == 0x00)
-   {
-      lpBitmapRLE += 4;
-   }
-
-   //
-   // Get the width and height of the bitmap.
-   //
-   uiWidth = lpBitmapRLE[0] | (lpBitmapRLE[1] << 8);
-   uiHeight = lpBitmapRLE[2] | (lpBitmapRLE[3] << 8);
-
-   //
-   // Calculate the total length of the bitmap.
-   // The bitmap is 8-bpp, each pixel will use 1 byte.
-   //
-   uiLen = uiWidth * uiHeight;
-
-   //
-   // Start decoding and blitting the bitmap.
-   //
-   lpBitmapRLE += 4;
-   for (i = 0; i < uiLen;)
-   {
-      T = *lpBitmapRLE++;
-      if ((T & 0x80) && T <= 0x80 + uiWidth)
-      {
-         i += T - 0x80;
-      }
-      else
-      {
-         for (j = 0; j < T; j++)
-         {
-            //
-            // Calculate the destination coordination.
-            // FIXME: This could be optimized
-            //
-            y = (i + j) / uiWidth + dy;
-            x = (i + j) % uiWidth + dx;
-
-            //
-            // Skip the points which are out of the surface.
-            //
-            if (x < 0)
-            {
-               j += -x - 1;
-               continue;
-            }
-            else if (x >= lpDstSurface->w)
-            {
-               j += x - lpDstSurface->w;
-               continue;
-            }
-
-            if (y < 0)
-            {
-               j += -y * uiWidth - 1;
-               continue;
-            }
-            else if (y >= lpDstSurface->h)
-            {
-               goto end; // No more pixels needed, break out
-            }
-
-            //
-            // Put the pixel onto the surface (FIXME: inefficient).
-            //
-            b = (lpBitmapRLE[j] & 0x0F);
-            if ((INT)b + iColorShift > 0x0F)
-            {
-               b = 0x0F;
-            }
-            else if ((INT)b + iColorShift < 0)
-            {
-               b = 0;
-            }
-            else
-            {
-               b += iColorShift;
-            }
-
-            ((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x] =
-               (b | (lpBitmapRLE[j] & 0xF0));
-         }
-         lpBitmapRLE += T;
-         i += T;
-      }
-   }
-
-end:
-   //
-   // Success
-   //
-   return 0;
+   return PAL_RLEBlitOne(lpBitmapRLE, lpDstSurface, pos, 0, 0, iColorShift);
 }
 
 INT
@@ -328,143 +266,8 @@ PAL_RLEBlitMonoColor(
    BYTE              bColor,
    INT               iColorShift
 )
-/*++
-  Purpose:
-
-    Blit an RLE-compressed bitmap to an SDL surface in mono-color form.
-    NOTE: Assume the surface is already locked, and the surface is a 8-bit one.
-
-  Parameters:
-
-    [IN]  lpBitmapRLE - pointer to the RLE-compressed bitmap to be decoded.
-
-    [OUT] lpDstSurface - pointer to the destination SDL surface.
-
-    [IN]  pos - position of the destination area.
-
-    [IN]  bColor - the color to be used while drawing.
-
-    [IN]  iColorShift - shift the color by this value.
-
-  Return value:
-
-    0 = success, -1 = error.
-
---*/
 {
-   UINT          i, j;
-   INT           x, y;
-   UINT          uiLen       = 0;
-   UINT          uiWidth     = 0;
-   UINT          uiHeight    = 0;
-   BYTE          T, b;
-   INT           dx          = PAL_X(pos);
-   INT           dy          = PAL_Y(pos);
-
-   //
-   // Check for NULL pointer.
-   //
-   if (lpBitmapRLE == NULL || lpDstSurface == NULL)
-   {
-      return -1;
-   }
-
-   //
-   // Skip the 0x00000002 in the file header.
-   //
-   if (lpBitmapRLE[0] == 0x02 && lpBitmapRLE[1] == 0x00 &&
-      lpBitmapRLE[2] == 0x00 && lpBitmapRLE[3] == 0x00)
-   {
-      lpBitmapRLE += 4;
-   }
-
-   //
-   // Get the width and height of the bitmap.
-   //
-   uiWidth = lpBitmapRLE[0] | (lpBitmapRLE[1] << 8);
-   uiHeight = lpBitmapRLE[2] | (lpBitmapRLE[3] << 8);
-
-   //
-   // Calculate the total length of the bitmap.
-   // The bitmap is 8-bpp, each pixel will use 1 byte.
-   //
-   uiLen = uiWidth * uiHeight;
-
-   //
-   // Start decoding and blitting the bitmap.
-   //
-   lpBitmapRLE += 4;
-   bColor &= 0xF0;
-   for (i = 0; i < uiLen;)
-   {
-      T = *lpBitmapRLE++;
-      if ((T & 0x80) && T <= 0x80 + uiWidth)
-      {
-         i += T - 0x80;
-      }
-      else
-      {
-         for (j = 0; j < T; j++)
-         {
-            //
-            // Calculate the destination coordination.
-            // FIXME: This could be optimized
-            //
-            y = (i + j) / uiWidth + dy;
-            x = (i + j) % uiWidth + dx;
-
-            //
-            // Skip the points which are out of the surface.
-            //
-            if (x < 0)
-            {
-               j += -x - 1;
-               continue;
-            }
-            else if (x >= lpDstSurface->w)
-            {
-               j += x - lpDstSurface->w;
-               continue;
-            }
-
-            if (y < 0)
-            {
-               j += -y * uiWidth - 1;
-               continue;
-            }
-            else if (y >= lpDstSurface->h)
-            {
-               goto end; // No more pixels needed, break out
-            }
-
-            //
-            // Put the pixel onto the surface (FIXME: inefficient).
-            //
-            b = lpBitmapRLE[j] & 0x0F;
-            if ((INT)b + iColorShift > 0x0F)
-            {
-               b = 0x0F;
-            }
-            else if ((INT)b + iColorShift < 0)
-            {
-               b = 0;
-            }
-            else
-            {
-               b += iColorShift;
-            }
-            ((LPBYTE)lpDstSurface->pixels)[y * lpDstSurface->pitch + x] = (b | bColor);
-         }
-         lpBitmapRLE += T;
-         i += T;
-      }
-   }
-
-end:
-   //
-   // Success
-   //
-   return 0;
+   return PAL_RLEBlitOne(lpBitmapRLE, lpDstSurface, pos, 0, bColor, iColorShift);
 }
 
 INT
@@ -474,102 +277,7 @@ PAL_RLEBlitToSurfaceInMirror(
    PAL_POS           pos
 )
 {
-   UINT i, k;
-   INT  y;
-   UINT uiLen = 0, uiWidth = 0, uiHeight = 0;
-   UINT uiSrcX = 0, uiSrcY = 0;
-   BYTE T;
-   INT  dx = PAL_X(pos), dy = PAL_Y(pos);
-   LPBYTE p;
-
-   if (lpBitmapRLE == NULL || lpDstSurface == NULL) return -1;
-
-   if (lpBitmapRLE[0] == 0x02 && lpBitmapRLE[1] == 0x00 &&
-       lpBitmapRLE[2] == 0x00 && lpBitmapRLE[3] == 0x00)
-   {
-      lpBitmapRLE += 4;
-   }
-
-   uiWidth = lpBitmapRLE[0] | (lpBitmapRLE[1] << 8);
-   uiHeight = lpBitmapRLE[2] | (lpBitmapRLE[3] << 8);
-
-   if (uiWidth + dx <= 0 || dx >= lpDstSurface->w ||
-       uiHeight + dy <= 0 || dy >= lpDstSurface->h)
-   {
-      return 0;
-   }
-
-   uiLen = uiWidth * uiHeight;
-   lpBitmapRLE += 4;
-
-   for (i = 0; i < uiLen;)
-   {
-      T = *lpBitmapRLE++;
-      if ((T & 0x80) && T <= 0x80 + uiWidth)
-      {
-         i += T - 0x80;
-         uiSrcX += T - 0x80;
-         while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
-      }
-      else
-      {
-         UINT processed = 0;
-         UINT curSrcX = uiSrcX;
-
-         y = dy + uiSrcY;
-         if (y < 0 || y >= lpDstSurface->h)
-         {
-            lpBitmapRLE += T;
-            i += T;
-            uiSrcX += T;
-            while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
-            continue;
-         }
-
-         p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
-
-         while (processed < T)
-         {
-            UINT pixelsInRow = T - processed;
-            if (pixelsInRow > uiWidth - curSrcX)
-               pixelsInRow = uiWidth - curSrcX;
-
-            {
-               INT dstXStart = dx + (INT)uiWidth - 1 - (INT)curSrcX;
-               INT dstXEnd = dx + (INT)uiWidth - 1 - (INT)(curSrcX + pixelsInRow - 1);
-               INT clipLeft = dstXEnd < 0 ? 0 : dstXEnd;
-               INT clipRight = dstXStart >= lpDstSurface->w ? lpDstSurface->w - 1 : dstXStart;
-
-               if (clipLeft <= clipRight)
-               {
-                  INT pxClippedLeft = clipLeft - dstXEnd;
-                  INT pxToDraw = clipRight - clipLeft + 1;
-                  for (k = 0; (INT)k < pxToDraw; k++)
-                  {
-                     p[clipRight - k] = lpBitmapRLE[processed + pxClippedLeft + k];
-                  }
-               }
-            }
-
-            processed += pixelsInRow;
-            curSrcX += pixelsInRow;
-            if (curSrcX >= uiWidth)
-            {
-               curSrcX = 0;
-               y++;
-               if (y >= lpDstSurface->h) break;
-               p = ((LPBYTE)lpDstSurface->pixels) + y * lpDstSurface->pitch;
-            }
-         }
-
-         lpBitmapRLE += T;
-         i += T;
-         uiSrcX += T;
-         while (uiSrcX >= uiWidth) { uiSrcX -= uiWidth; uiSrcY++; }
-      }
-   }
-
-   return 0;
+   return PAL_RLEBlitOne(lpBitmapRLE, lpDstSurface, pos, RLE_BLIT_MIRROR, 0, 0);
 }
 
 INT
