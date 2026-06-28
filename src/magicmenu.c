@@ -224,7 +224,7 @@ PAL_MagicSelectionMenuUpdate(
       WORD wMagicNum = gpGlobals->g.rgObject[wMagicOID].magic.wMagicNumber;
       char szDbg[256];
 
-      sprintf(szDbg, "#%04X \xe6\x97\x97#%04X", wMagicOID, gpGlobals->g.rgObject[wMagicOID].magic.wFlags);
+      sprintf(szDbg, "#%03X:%02X \xe6\x97\x97#%04X", wMagicOID, wMagicNum, gpGlobals->g.rgObject[wMagicOID].magic.wFlags);
       PAL_DrawSmallText(szDbg, gpScreen, PAL_XY(0, -1), 0x7D);
 
       sprintf(szDbg, "\xe5\xbe\x8c#%04X \xe5\x89\x8d#%04X", gpGlobals->g.rgObject[wMagicOID].magic.wScriptOnSuccess, gpGlobals->g.rgObject[wMagicOID].magic.wScriptOnUse);
