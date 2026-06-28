@@ -122,6 +122,7 @@ DEBUG_DrawEventObjects(
    wEnd = gpGlobals->g.rgScene[wSceneIndex + 1].wEventObjectIndex;
 
    if (wEnd >= gpGlobals->g.nEventObject) wEnd = gpGlobals->g.nEventObject - 1;
+   if (wStart > wEnd) return;
 
    for (i = wStart; i <= wEnd; i++)
    {

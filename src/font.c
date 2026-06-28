@@ -720,12 +720,16 @@ PAL_DrawSmallCharOnSurface(
 		return;
 	if (small_font_width[wChar] == 0)
 		return;
+	if (x >= lpSurface->w || y >= lpSurface->h || x + 16 <= 0 || y + SMALL_FONT_HEIGHT <= 0)
+		return;
 
 	LPBYTE dest = (LPBYTE)lpSurface->pixels + y * lpSurface->pitch + x;
 	LPBYTE top = (LPBYTE)lpSurface->pixels + lpSurface->h * lpSurface->pitch;
+	LPBYTE base = (LPBYTE)lpSurface->pixels;
 
 	for (i = 0; i < SMALL_FONT_HEIGHT && dest < top; i++, dest += lpSurface->pitch)
 	{
+		if (dest < base) continue;
 		for (j = 0; j < 8 && x + j < lpSurface->w; j++)
 		{
 			if (small_font[wChar][i * 2] & (1 << (7 - j)))
