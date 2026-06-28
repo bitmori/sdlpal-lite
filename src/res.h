@@ -27,9 +27,8 @@
 
 typedef enum tagLOADRESFLAG
 {
-   kLoadGlobalData     = (1 << 0),    // load global data
-   kLoadScene          = (1 << 1),    // load a scene
-   kLoadPlayerSprite   = (1 << 2),    // load player sprites
+   kLoadScene          = (1 << 0),    // load a scene
+   kLoadPlayerSprite   = (1 << 1),    // load player sprites
 } LOADRESFLAG, *LPLOADRESFLAG;
 
 PAL_C_LINKAGE_BEGIN

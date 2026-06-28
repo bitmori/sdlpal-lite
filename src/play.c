@@ -64,7 +64,7 @@ PAL_GameUpdate(
          gpGlobals->g.rgScene[i].wScriptOnEnter =
             PAL_RunTriggerScript(gpGlobals->g.rgScene[i].wScriptOnEnter, 0xFFFF);
 
-         if (gpGlobals->fEnteringScene)
+         if (gpGlobals->fEnteringScene || gpGlobals->fGameStart)
          {
             //
             // Don't go further as we're switching to another scene
@@ -164,7 +164,7 @@ PAL_GameUpdate(
 
                PAL_ClearKeyState();
 
-               if (gpGlobals->fEnteringScene)
+               if (gpGlobals->fEnteringScene || gpGlobals->fGameStart)
                {
                   //
                   // Don't go further on scene switching
@@ -191,7 +191,7 @@ PAL_GameUpdate(
          if (wScriptEntry != 0)
          {
             p->wAutoScript = PAL_RunAutoScript(wScriptEntry, wEventObjectID);
-            if (gpGlobals->fEnteringScene)
+            if (gpGlobals->fEnteringScene || gpGlobals->fGameStart)
             {
                //
                // Don't go further on scene switching

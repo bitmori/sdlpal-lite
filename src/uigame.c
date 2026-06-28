@@ -213,6 +213,8 @@ PAL_SaveSlotMenu(
          kNumColorYellow, kNumAlignRight);
    }
 
+   VIDEO_UpdateScreen(&rect);
+
    //
    // Activate the menu
    //
@@ -292,6 +294,7 @@ PAL_SelectionMenu(
 		rgpBox[i] = PAL_CreateSingleLineBox(PAL_XY(130 + 75 * (i % 2) + dx[i], 100 + 50 * (i / 2)), w[i] + 1, TRUE);
 	}
 
+	VIDEO_UpdateScreen(&rect);
 
 	//
 	// Activate the menu
@@ -491,6 +494,7 @@ PAL_SystemMenu(
    // Create the menu box.
    //
    lpMenuBox = PAL_CreateBox(PAL_XY(40, 60), nSystemMenuItem - 1, PAL_MenuTextMaxWidth(rgSystemMenuItem, nSystemMenuItem) - 1, 0, TRUE);
+   VIDEO_UpdateScreen(&rect);
 
    //
    // Perform the menu.
@@ -541,7 +545,7 @@ PAL_SystemMenu(
       {
          AUDIO_PlayMusic(0, FALSE, 1);
          PAL_FadeOut(1);
-         PAL_ReloadInNextTick(iSlot);
+         PAL_InitGameData(iSlot);
       }
       break;
 
@@ -632,6 +636,7 @@ PAL_InGameMagicMenu(
    // Draw the box
    //
    PAL_CreateBox(PAL_XY(35, 62), gpGlobals->wMaxPartyMemberIndex, PAL_MenuTextMaxWidth(rgMenuItem, sizeof(rgMenuItem)/sizeof(MENUITEM)) - 1, 0, FALSE);
+   VIDEO_UpdateScreen(&rect);
 
    w = PAL_ReadMenu(NULL, rgMenuItem, gpGlobals->wMaxPartyMemberIndex + 1, w, MENUITEM_COLOR);
 
@@ -814,6 +819,7 @@ PAL_InventoryMenu(
    };
 
    PAL_CreateBox(PAL_XY(30, 60), 1, PAL_MenuTextMaxWidth(rgMenuItem, sizeof(rgMenuItem)/sizeof(MENUITEM)) - 1, 0, FALSE);
+   VIDEO_UpdateScreen(&rect);
 
    w = PAL_ReadMenu(NULL, rgMenuItem, 2, w - 1, MENUITEM_COLOR);
 
@@ -899,6 +905,7 @@ PAL_InGameMenu(
    //
    // Fix render problem with shadow
    lpMenuBox = PAL_CreateBox(PAL_XY(3, 37), 3, PAL_MenuTextMaxWidth(rgMainMenuItem, 4) - 1, 0, FALSE);
+   VIDEO_UpdateScreen(&rect);
 
    //
    // Process the menu
@@ -1639,6 +1646,7 @@ PAL_BuyMenu(
       PAL_DrawNumber(w, 6, PAL_XY(235, 25 + y * 18), kNumColorCyan, kNumAlignRight);
    }
 
+   VIDEO_UpdateScreen(&rect);
 
    w = 0;
 

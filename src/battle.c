@@ -51,7 +51,7 @@ PAL_BattleMakeScene(
 
 --*/
 {
-   int          i, j;
+   int          i;
    PAL_POS      pos;
    LPBYTE       pSrc, pDst;
    BYTE         b;
@@ -85,24 +85,10 @@ PAL_BattleMakeScene(
    PAL_ApplyWave(g_Battle.lpSceneBuf);
 
    //
-   // Draw the enemies (sorted by y position for correct overlap)
+   // Draw the enemies
    //
+   for (i = g_Battle.wMaxEnemyIndex; i >= 0; i--)
    {
-      INT enemyDrawSeq[MAX_ENEMIES_IN_TEAM];
-      INT tmp;
-      for (i = 0; i <= g_Battle.wMaxEnemyIndex; i++)
-         enemyDrawSeq[i] = i;
-      for (i = 0; i < g_Battle.wMaxEnemyIndex; i++)
-         for (j = i + 1; j <= g_Battle.wMaxEnemyIndex; j++)
-            if (PAL_Y(g_Battle.rgEnemy[enemyDrawSeq[i]].pos) > PAL_Y(g_Battle.rgEnemy[enemyDrawSeq[j]].pos))
-            {
-               tmp = enemyDrawSeq[i];
-               enemyDrawSeq[i] = enemyDrawSeq[j];
-               enemyDrawSeq[j] = tmp;
-            }
-      for (j = 0; j <= g_Battle.wMaxEnemyIndex; j++)
-      {
-         i = enemyDrawSeq[j];
       pos = g_Battle.rgEnemy[i].pos;
 
       if (g_Battle.rgEnemy[i].rgwStatus[kStatusConfused] > 0 &&
@@ -131,7 +117,6 @@ PAL_BattleMakeScene(
                g_Battle.lpSceneBuf, pos);
          }
       }
-   }
    }
 
    if (g_Battle.lpSummonSprite != NULL)
@@ -193,12 +178,7 @@ PAL_BattleMakeScene(
             //
             // Player is confused
             //
-            {
-               int xd = PAL_X(g_Battle.rgPlayer[i].pos), yd = PAL_Y(g_Battle.rgPlayer[i].pos);
-               if (!PAL_IsPlayerDying(gpGlobals->rgParty[i].wPlayerRole))
-                  yd += RandomLong(-1, 1);
-               pos = PAL_XY(xd, yd);
-            }
+            pos = PAL_XY(PAL_X(g_Battle.rgPlayer[i].pos), PAL_Y(g_Battle.rgPlayer[i].pos) + RandomLong(-1, 1));
             pos = PAL_XY(PAL_X(pos) - PAL_RLEGetWidth(PAL_SpriteGetFrame(g_Battle.rgPlayer[i].lpSprite, g_Battle.rgPlayer[i].wCurrentFrame)) / 2,
                PAL_Y(pos) - PAL_RLEGetHeight(PAL_SpriteGetFrame(g_Battle.rgPlayer[i].lpSprite, g_Battle.rgPlayer[i].wCurrentFrame)));
 
@@ -1213,6 +1193,7 @@ PAL_StartBattle(
       g_Battle.rgPlayer[i].flTimeMeter = 15.0f;
       g_Battle.rgPlayer[i].wHidingTime = 0;
       g_Battle.rgPlayer[i].state = kFighterWait;
+      g_Battle.rgPlayer[i].action.sTarget = -1;
       g_Battle.rgPlayer[i].fDefending = FALSE;
       g_Battle.rgPlayer[i].wCurrentFrame = 0;
       g_Battle.rgPlayer[i].iColorShift = FALSE;

@@ -1681,7 +1681,7 @@ PAL_InterpretInstruction(
       // Load the last saved game
       //
       PAL_FadeOut(1);
-      PAL_ReloadInNextTick(gpGlobals->bCurrentSaveSlot);
+      PAL_InitGameData(gpGlobals->bCurrentSaveSlot);
       return 0; // don't go further
 
    case 0x004F:
@@ -2698,11 +2698,10 @@ PAL_InterpretInstruction(
          }
       }
 
-      if (w != 1 || g_Battle.rgEnemy[wCurEventObjectID].e.wHealth <= 1)
+      if (w != 1)
       {
          //
-         // Division is only possible when only 1 enemy left
-         // health too low also cannot division
+         // Duplication is only possible when only 1 enemy left
          //
          if (pScript->rgwOperand[1] != 0)
          {
@@ -2716,10 +2715,8 @@ PAL_InterpretInstruction(
       {
          w = 1;
       }
-      x = w + 1;
-      y = w;
 
-      for (i = 0; i < MAX_ENEMIES_IN_TEAM; i++)
+      for (i = 0; i <= g_Battle.wMaxEnemyIndex; i++)
       {
          if (w > 0 && g_Battle.rgEnemy[i].wObjectID == 0)
          {
@@ -2729,7 +2726,6 @@ PAL_InterpretInstruction(
 
             g_Battle.rgEnemy[i].wObjectID = g_Battle.rgEnemy[wEventObjectID].wObjectID;
             g_Battle.rgEnemy[i].e = g_Battle.rgEnemy[wEventObjectID].e;
-            g_Battle.rgEnemy[i].e.wHealth = (g_Battle.rgEnemy[wEventObjectID].e.wHealth + y) / x;
             g_Battle.rgEnemy[i].wScriptOnTurnStart = g_Battle.rgEnemy[wEventObjectID].wScriptOnTurnStart;
             g_Battle.rgEnemy[i].wScriptOnBattleEnd = g_Battle.rgEnemy[wEventObjectID].wScriptOnBattleEnd;
             g_Battle.rgEnemy[i].wScriptOnReady = g_Battle.rgEnemy[wEventObjectID].wScriptOnReady;
@@ -2739,13 +2735,6 @@ PAL_InterpretInstruction(
             g_Battle.rgEnemy[i].iColorShift = 0;
          }
       }
-      g_Battle.rgEnemy[wCurEventObjectID].e.wHealth = (g_Battle.rgEnemy[wEventObjectID].e.wHealth + y) / x;
-
-      w = 0;
-      for (i = 0; i < MAX_ENEMIES_IN_TEAM; i++)
-         if (g_Battle.rgEnemy[i].wObjectID != 0)
-            w = i;
-      g_Battle.wMaxEnemyIndex = w;
 
       PAL_LoadBattleSprites();
 
@@ -2922,7 +2911,6 @@ PAL_InterpretInstruction(
       //
       // Play CD music. Use the RIX music for fallback.
       //
-      gpGlobals->wNumMusic = pScript->rgwOperand[1];
       if (!AUDIO_PlayCDTrack(pScript->rgwOperand[0]))
       {
          AUDIO_PlayMusic(pScript->rgwOperand[1], TRUE, 0);
@@ -3217,7 +3205,7 @@ PAL_RunTriggerScript(
          }
          else
          {
-             wScriptEntry++;
+            wScriptEntry++;
          }
          break;
 
@@ -3277,7 +3265,6 @@ PAL_RunTriggerScript(
          if (gpszMsgFile)
          {
             int idx = 0, iMsg;
-            int beginning = 1;
             while ((iMsg = PAL_GetMsgNum(pScript->rgwOperand[0], idx++)) >= 0)
 			{
                if (iMsg == 0)
@@ -3295,16 +3282,13 @@ PAL_RunTriggerScript(
             if( gpGlobals->g.lprgScriptEntry[wScriptEntry+1].wOperation == 0xFFFF && gpGlobals->g.lprgScriptEntry[wScriptEntry+1].rgwOperand[0] != pScript->rgwOperand[0] + 1)
 			   wScriptEntry++;
             else
-            while ((gpGlobals->g.lprgScriptEntry[wScriptEntry].wOperation == 0xFFFF &&
-                    ((!beginning && gpGlobals->g.lprgScriptEntry[wScriptEntry-1].wOperation == 0xFFFF) ?
-                     gpGlobals->g.lprgScriptEntry[wScriptEntry].rgwOperand[0] == gpGlobals->g.lprgScriptEntry[wScriptEntry-1].rgwOperand[0] + 1 : 1))
+            while (gpGlobals->g.lprgScriptEntry[wScriptEntry].wOperation == 0xFFFF
                 || gpGlobals->g.lprgScriptEntry[wScriptEntry].wOperation == 0x008E)
             {
                //
                // Skip all following continuous 0xFFFF & 0x008E instructions
                //
                wScriptEntry++;
-               beginning = 0;
             }
          }
 		 else

@@ -49,30 +49,27 @@ PAL_IsPlayerDying(
 }
 
 INT
-PAL_BattleSelectAutoTargetFrom(
-   INT          begin
-)
-{
-   int count, i;
-   if (begin < 0) begin = 0;
-   for (count = 0, i = begin; count < MAX_ENEMIES_IN_TEAM; count++, i++)
-   {
-      if (i > g_Battle.wMaxEnemyIndex) i = 0;
-      if (g_Battle.rgEnemy[i].wObjectID != 0 &&
-         g_Battle.rgEnemy[i].e.wHealth > 0)
-      {
-         return i;
-      }
-   }
-   return -1;
-}
-
-INT
 PAL_BattleSelectAutoTarget(
    VOID
 )
+/*++
+  Purpose:
+
+    Pick an enemy target automatically.
+
+  Parameters:
+
+    None.
+
+  Return value:
+
+    The index of enemy. -1 if failed.
+
+--*/
 {
-   int i = (int)g_Battle.UI.wPrevEnemyTarget;
+   int          i;
+
+   i = (int)g_Battle.UI.wPrevEnemyTarget;
 
    if (i >= 0 && i <= g_Battle.wMaxEnemyIndex &&
       g_Battle.rgEnemy[i].wObjectID != 0 &&
@@ -81,7 +78,16 @@ PAL_BattleSelectAutoTarget(
       return i;
    }
 
-   return PAL_BattleSelectAutoTargetFrom(0);
+   for (i = 0; i <= g_Battle.wMaxEnemyIndex; i++)
+   {
+      if (g_Battle.rgEnemy[i].wObjectID != 0 &&
+         g_Battle.rgEnemy[i].e.wHealth > 0)
+      {
+         return i;
+      }
+   }
+
+   return -1;
 }
 
 static SHORT
@@ -2897,10 +2903,10 @@ PAL_BattlePlayerValidateAction(
          if (i > gpGlobals->wMaxPartyMemberIndex)
          {
             //
-            // No one else alive — pass instead of attacking enemies
+            // Attack enemies if no one else is alive
             //
-            g_Battle.rgPlayer[wPlayerIndex].action.ActionType = kBattleActionPass;
-            g_Battle.rgPlayer[wPlayerIndex].action.wActionID = 0;
+            fToEnemy = TRUE;
+            g_Battle.rgPlayer[wPlayerIndex].action.ActionType = kBattleActionAttack;
          }
       }
       break;
@@ -2962,31 +2968,6 @@ PAL_BattleCheckHidingEffect(
    }
 }
 
-INT
-FIGHT_DetectMagicTargetChange(
-   WORD wMagicNum,
-   INT sTarget
-)
-{
-   if(sTarget == -1 && (
-                        gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeNormal
-                        || gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeApplyToPlayer
-                        || gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeTrance
-                        ))
-      sTarget = 0;
-   
-   if( sTarget != -1 && (
-                         gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeAttackAll
-                         || gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeAttackWhole
-                         || gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeAttackField
-                         || gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeApplyToParty
-                         || gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeSummon
-                         ))
-      sTarget = -1;
-
-   return sTarget;
-}
-
 VOID
 PAL_BattlePlayerPerformAction(
    WORD         wPlayerIndex
@@ -3018,7 +2999,6 @@ PAL_BattlePlayerPerformAction(
    g_Battle.wMovingPlayerIndex = wPlayerIndex;
    g_Battle.iBlow = 0;
 
-   SHORT origTarget = g_Battle.rgPlayer[wPlayerIndex].action.sTarget;
    PAL_BattlePlayerValidateAction(wPlayerIndex);
    PAL_BattleBackupStat();
 
@@ -3248,8 +3228,6 @@ PAL_BattlePlayerPerformAction(
    case kBattleActionCoopMagic:
       wObject = PAL_GetPlayerCooperativeMagic(gpGlobals->rgParty[wPlayerIndex].wPlayerRole);
       wMagicNum = gpGlobals->g.rgObject[wObject].magic.wMagicNumber;
-
-      sTarget = FIGHT_DetectMagicTargetChange(wMagicNum, sTarget);
 
       if (gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeSummon)
       {
@@ -3527,8 +3505,6 @@ PAL_BattlePlayerPerformAction(
       wObject = g_Battle.rgPlayer[wPlayerIndex].action.wActionID;
       wMagicNum = gpGlobals->g.rgObject[wObject].magic.wMagicNumber;
 
-      sTarget = FIGHT_DetectMagicTargetChange(wMagicNum, sTarget);
-
       PAL_BattleShowPlayerPreMagicAnim(wPlayerIndex,
          (gpGlobals->g.lprgMagic[wMagicNum].wType == kMagicTypeSummon));
 
@@ -3758,7 +3734,6 @@ PAL_BattlePlayerPerformAction(
 
    PAL_BattlePostActionCheck(FALSE);
 
-   g_Battle.rgPlayer[wPlayerIndex].action.sTarget = origTarget;
 }
 
 static INT

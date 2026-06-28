@@ -216,16 +216,6 @@ PAL_LoadResources(
    }
 
    //
-   // Load global data
-   //
-   if (gpResources->bLoadFlags & kLoadGlobalData)
-   {
-      PAL_InitGameData(gpGlobals->bCurrentSaveSlot);
-      PAL_ExecuteAutoHacks();
-      AUDIO_PlayMusic(gpGlobals->wNumMusic, TRUE, 1);
-   }
-
-   //
    // Load scene
    //
    if (gpResources->bLoadFlags & kLoadScene)

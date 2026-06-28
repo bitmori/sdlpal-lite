@@ -113,9 +113,15 @@ DEBUG_DrawEventObjects(
    int view_x = PAL_X(gpGlobals->viewport);
    int view_y = PAL_Y(gpGlobals->viewport);
    WORD wSceneIndex = gpGlobals->wNumScene - 1;
-   WORD wStart = gpGlobals->g.rgScene[wSceneIndex].wEventObjectIndex + 1;
-   WORD wEnd = gpGlobals->g.rgScene[wSceneIndex + 1].wEventObjectIndex;
-   WORD i;
+   WORD wStart, wEnd, i;
+
+   if (wSceneIndex >= MAX_SCENES - 1 || gpGlobals->g.lprgEventObject == NULL)
+      return;
+
+   wStart = gpGlobals->g.rgScene[wSceneIndex].wEventObjectIndex + 1;
+   wEnd = gpGlobals->g.rgScene[wSceneIndex + 1].wEventObjectIndex;
+
+   if (wEnd >= gpGlobals->g.nEventObject) wEnd = gpGlobals->g.nEventObject - 1;
 
    for (i = wStart; i <= wEnd; i++)
    {
