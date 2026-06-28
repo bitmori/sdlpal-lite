@@ -308,13 +308,13 @@ typedef enum tagMAGIC_TYPE
 
 typedef enum tagMAGIC_RENDER_MODE
 {
-   kMagicRenderReverse        = 1 << 0,
-   kMagicRenderReverseHeroOff = 1 << 1,
-   kMagicRenderReverseEnemyOff = 1 << 2,
-   kMagicRenderMirror         = 1 << 3,
-   kMagicRenderMirrorHeroOff  = 1 << 4,
-   kMagicRenderMirrorEnemyOff = 1 << 5,
-   kMagicRenderTripleParallel = 1 << 6,
+   kMagicRenderReverse          = 1 << 0,  // reverse frames (all)
+   kMagicRenderReverseHeroOnly  = 1 << 1,  // reverse frames (hero spells only)
+   kMagicRenderReverseEnemyOnly = 1 << 2,  // reverse frames (enemy spells only)
+   kMagicRenderMirror           = 1 << 3,  // horizontal mirror (all)
+   kMagicRenderMirrorHeroOnly   = 1 << 4,  // horizontal mirror (hero spells only)
+   kMagicRenderMirrorEnemyOnly  = 1 << 5,  // horizontal mirror (enemy spells only)
+   kMagicRenderTripleParallel   = 1 << 6,  // three-way parallel layout for attack-all
 } MAGIC_RENDER_MODE;
 
 typedef struct tagMAGIC

@@ -1925,12 +1925,13 @@ PAL_BattleShowPlayerDefMagicAnim(
    iMagicNum = gpGlobals->g.rgObject[wObjectID].magic.wMagicNumber;
    iEffectNum = gpGlobals->g.lprgMagic[iMagicNum].wEffect;
 
+   BOOL bReverseAnim, bMirrorAnim;
    {
       WORD render_mode = gpGlobals->g.lprgMagic[iMagicNum].wRenderMode;
-      BOOL bReverseAnim = render_mode & kMagicRenderReverse;
-      g_Battle.fMagicRenderMirror = FALSE;
+      bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseHeroOnly);
+      bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorHeroOnly);
+      g_Battle.fMagicRenderMirror = bMirrorAnim;
       g_Battle.bMagicMonoColor = (BYTE)(render_mode >> 8);
-      (void)bReverseAnim;
    }
 
    l = PAL_MKFGetDecompressedSize(iEffectNum, gpGlobals->f.fpFIRE);
@@ -1950,7 +1951,7 @@ PAL_BattleShowPlayerDefMagicAnim(
 
    for (i = 0; i < n; i++)
    {
-      LPCBITMAPRLE b = PAL_SpriteGetFrame(lpSpriteEffect, i);
+      LPCBITMAPRLE b = PAL_SpriteGetFrame(lpSpriteEffect, bReverseAnim ? (n - 1 - i) : i);
 
       if (i == gpGlobals->g.lprgMagic[iMagicNum].wFireDelay)
       {
@@ -1983,8 +1984,9 @@ PAL_BattleShowPlayerDefMagicAnim(
             x += (SHORT) gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
             y += (SHORT) gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-            PAL_RLEBlitToSurface(b, gpScreen,
-               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+            PAL_RLEBlitOne(b, gpScreen,
+               PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+               g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
          }
       }
       else if (gpGlobals->g.lprgMagic[iMagicNum].wType == kMagicTypeApplyToPlayer)
@@ -1997,8 +1999,9 @@ PAL_BattleShowPlayerDefMagicAnim(
          x += (SHORT) gpGlobals->g.lprgMagic[iMagicNum].wXOffset;
          y += (SHORT) gpGlobals->g.lprgMagic[iMagicNum].wYOffset;
 
-         PAL_RLEBlitToSurface(b, gpScreen,
-            PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)));
+         PAL_RLEBlitOne(b, gpScreen,
+            PAL_XY(x - PAL_RLEGetWidth(b) / 2, y - PAL_RLEGetHeight(b)),
+            g_Battle.fMagicRenderMirror ? RLE_BLIT_MIRROR : 0, g_Battle.bMagicMonoColor, 0);
 
          //
          // Repaint the previous player
@@ -2105,8 +2108,8 @@ PAL_BattleShowPlayerOffMagicAnim(
    iEffectNum = gpGlobals->g.lprgMagic[iMagicNum].wEffect;
 
    render_mode = gpGlobals->g.lprgMagic[iMagicNum].wRenderMode;
-   bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseHeroOff);
-   bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorHeroOff);
+   bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseHeroOnly);
+   bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorHeroOnly);
    bTripleParallelAnim = render_mode & kMagicRenderTripleParallel;
    g_Battle.fMagicRenderMirror = bMirrorAnim;
    g_Battle.bMagicMonoColor = (BYTE)(render_mode >> 8);
@@ -2337,8 +2340,8 @@ PAL_BattleShowEnemyMagicAnim(
    iEffectNum = gpGlobals->g.lprgMagic[iMagicNum].wEffect;
 
    render_mode = gpGlobals->g.lprgMagic[iMagicNum].wRenderMode;
-   bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseEnemyOff);
-   bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorEnemyOff);
+   bReverseAnim = render_mode & (kMagicRenderReverse | kMagicRenderReverseEnemyOnly);
+   bMirrorAnim = render_mode & (kMagicRenderMirror | kMagicRenderMirrorEnemyOnly);
    g_Battle.fMagicRenderMirror = bMirrorAnim;
    g_Battle.bMagicMonoColor = (BYTE)(render_mode >> 8);
 
