@@ -218,6 +218,35 @@ PAL_MagicSelectionMenuUpdate(
       }
    }
 
+   if (g_fDebugShowStatus)
+   {
+      WORD wMagicOID = rgMagicItem[g_iCurrentItem].wMagic;
+      WORD wMagicNum = gpGlobals->g.rgObject[wMagicOID].magic.wMagicNumber;
+      char szDbg[256];
+
+      sprintf(szDbg, "#%04X \xe6\x97\x97#%04X", wMagicOID, gpGlobals->g.rgObject[wMagicOID].magic.wFlags);
+      PAL_DrawSmallText(szDbg, gpScreen, PAL_XY(0, -1), 0x7D);
+
+      sprintf(szDbg, "\xe5\xbe\x8c#%04X \xe5\x89\x8d#%04X", gpGlobals->g.rgObject[wMagicOID].magic.wScriptOnSuccess, gpGlobals->g.rgObject[wMagicOID].magic.wScriptOnUse);
+      PAL_DrawSmallText(szDbg, gpScreen, PAL_XY(2, 24), 0x7D);
+
+      if (wMagicNum < (WORD)gpGlobals->g.nMagic)
+      {
+         SHORT *pM = (SHORT *)&gpGlobals->g.lprgMagic[wMagicNum];
+         int my = 44 + iBoxYOffset + (iLinesPerPage) * 18;
+         sprintf(szDbg,
+            // 0特效 | 1类型 | X位置 | Y位置 | 4召唤 | 5速度 | 6痕迹 | 7延迟
+            "0特=%X 1类=%X 2XY=%d,%d 4召=%X 5速=%d 6痕=%X 7延=%d",
+            (WORD)pM[0], (WORD)pM[1], pM[2], pM[3], (WORD)pM[4], pM[5], (WORD)pM[6], pM[7]);
+         PAL_DrawSmallText(szDbg, gpScreen, PAL_XY(2, my), 0x2E);
+         sprintf(szDbg,
+            // 8总时 | 9震动 | A扭曲 | B渲染 | D伤害 | E元素 | F音效
+            "8总=%d 9震=%d A波=%d B渲=%04X 伤=%d E属=%d F音=%d",
+            pM[8], pM[9], pM[10], (WORD)pM[11], pM[13], pM[14], pM[15]);
+         PAL_DrawSmallText(szDbg, gpScreen, PAL_XY(2, my + 12), 0x8E);
+      }
+   }
+
    if (g_InputState.dwKeyPress & kKeySearch)
    {
       if (rgMagicItem[g_iCurrentItem].fEnabled)

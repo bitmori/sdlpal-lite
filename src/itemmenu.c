@@ -245,6 +245,20 @@ PAL_ItemSelectMenuUpdate(
       }
    }
 
+   if (g_fDebugShowStatus)
+   {
+      char szDebug[128];
+      sprintf(szDebug, "#%03X $%d", wObject, gpGlobals->g.rgObject[wObject].item.wPrice);
+      PAL_DrawSmallText(szDebug, gpScreen, PAL_XY(2, yBase - iPictureYOffset), 0x2E);
+      sprintf(szDebug, "\xe5\x9c\x96#%03X \xe7\x94\xa8#%04X \xe8\xa3\x9d#%04X \xe6\x8a\x95#%04X \xe6\x97\x97#%04X",
+         gpGlobals->g.rgObject[wObject].item.wBitmap,         
+         gpGlobals->g.rgObject[wObject].item.wScriptOnUse,
+         gpGlobals->g.rgObject[wObject].item.wScriptOnEquip,
+         gpGlobals->g.rgObject[wObject].item.wScriptOnThrow,
+         gpGlobals->g.rgObject[wObject].item.wFlags);
+      PAL_DrawSmallText(szDebug, gpScreen, PAL_XY(2, 188), 0x8E);
+   }
+
    if (g_InputState.dwKeyPress & kKeySearch)
    {
       if ((gpGlobals->g.rgObject[wObject].item.wFlags & g_wItemFlags) &&
