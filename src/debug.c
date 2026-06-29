@@ -199,10 +199,221 @@ PAL_DebugOverlay(
 }
 
 // ============================================================
+// Hex drawing / input / script viewer
+// ============================================================
+
+static void
+DEBUG_DrawHexChar(
+   int     x,
+   int     y,
+   char    c,
+   BYTE    bColor
+)
+{
+   PAL_DrawCharOnSurface((uint16_t)c, gpScreen, PAL_XY(x + 1, y + 1), 0, TRUE);
+   PAL_DrawCharOnSurface((uint16_t)c, gpScreen, PAL_XY(x, y), bColor, TRUE);
+}
+
+static void
+DEBUG_DrawHex4(
+   int     x,
+   int     y,
+   WORD    val,
+   BYTE    bColor
+)
+{
+   const char hex[] = "0123456789ABCDEF";
+   DEBUG_DrawHexChar(x,      y, hex[(val >> 12) & 0xF], bColor);
+   DEBUG_DrawHexChar(x + 8,  y, hex[(val >> 8) & 0xF], bColor);
+   DEBUG_DrawHexChar(x + 16, y, hex[(val >> 4) & 0xF], bColor);
+   DEBUG_DrawHexChar(x + 24, y, hex[val & 0xF], bColor);
+}
+
+static INT
+DEBUG_HexInput(
+   WORD    wDefault
+)
+{
+   int iDigit = 0;
+   BYTE rgDigits[4];
+   DWORD dwTime;
+
+   rgDigits[0] = (wDefault >> 12) & 0xF;
+   rgDigits[1] = (wDefault >> 8) & 0xF;
+   rgDigits[2] = (wDefault >> 4) & 0xF;
+   rgDigits[3] = wDefault & 0xF;
+
+   VIDEO_BackupScreen(gpScreen);
+   PAL_ClearKeyState();
+   dwTime = SDL_GetTicks();
+
+   while (TRUE)
+   {
+      const char hex[] = "0123456789ABCDEF";
+      int i;
+
+      VIDEO_RestoreScreen(gpScreen);
+      PAL_CreateSingleLineBox(PAL_XY(100, 80), 5, FALSE);
+
+      for (i = 0; i < 4; i++)
+      {
+         BYTE color = (i == iDigit) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+         DEBUG_DrawHexChar(120 + i * 10, 91, hex[rgDigits[i]], color);
+      }
+
+      // Draw cursor under active digit
+      PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
+         gpScreen, PAL_XY(120 + iDigit * 10, 101));
+
+      VIDEO_UpdateScreen(NULL);
+      PAL_ClearKeyState();
+
+      while (!SDL_TICKS_PASSED(SDL_GetTicks(), dwTime))
+      {
+         PAL_ProcessEvent();
+         if (g_InputState.dwKeyPress != 0) break;
+         SDL_Delay(5);
+      }
+      dwTime = SDL_GetTicks() + FRAME_TIME;
+
+      if (g_InputState.dwKeyPress & kKeyLeft)
+      {
+         iDigit = (iDigit > 0) ? iDigit - 1 : 3;
+      }
+      else if (g_InputState.dwKeyPress & kKeyRight)
+      {
+         iDigit = (iDigit < 3) ? iDigit + 1 : 0;
+      }
+      else if (g_InputState.dwKeyPress & kKeyUp)
+      {
+         rgDigits[iDigit] = (rgDigits[iDigit] + 1) & 0xF;
+      }
+      else if (g_InputState.dwKeyPress & kKeyDown)
+      {
+         rgDigits[iDigit] = (rgDigits[iDigit] - 1) & 0xF;
+      }
+      else if (g_InputState.dwKeyPress & kKeySearch)
+      {
+         VIDEO_RestoreScreen(gpScreen);
+         return (rgDigits[0] << 12) | (rgDigits[1] << 8) | (rgDigits[2] << 4) | rgDigits[3];
+      }
+      else if (g_InputState.dwKeyPress & kKeyMenu)
+      {
+         VIDEO_RestoreScreen(gpScreen);
+         return -1;
+      }
+   }
+}
+
+#define SCRIPT_LINES_PER_PAGE 14
+
+static void
+PAL_DebugScriptViewer(
+   VOID
+)
+{
+   INT iEntry;
+   int iCurrent, iTop;
+   DWORD dwTime;
+
+   iEntry = DEBUG_HexInput(0);
+   if (iEntry < 0) return;
+
+   if (iEntry >= gpGlobals->g.nScriptEntry)
+      iEntry = gpGlobals->g.nScriptEntry - 1;
+
+   iCurrent = iEntry;
+   iTop = iCurrent - SCRIPT_LINES_PER_PAGE / 2;
+   if (iTop < 0) iTop = 0;
+
+   VIDEO_BackupScreen(gpScreen);
+   PAL_ClearKeyState();
+   dwTime = SDL_GetTicks();
+
+   while (TRUE)
+   {
+      int i;
+
+      VIDEO_RestoreScreen(gpScreen);
+      PAL_CreateBox(PAL_XY(2, 2), (SCRIPT_LINES_PER_PAGE * 13 + 16) / 16 - 1, 17, 0, FALSE);
+
+      for (i = 0; i < SCRIPT_LINES_PER_PAGE; i++)
+      {
+         int idx = iTop + i;
+         int y = 14 + i * 13;
+         BYTE color;
+
+         if (idx >= gpGlobals->g.nScriptEntry) break;
+
+         if (gpGlobals->g.lprgScriptEntry[idx].wOperation == 0)
+            color = 0x1A;
+         else
+            color = (idx == iCurrent) ? 0x2D : 0x4F;
+
+         // Address
+         DEBUG_DrawHex4(8, y, (WORD)idx, (idx == iCurrent) ? 0xFF : 0x8D);
+
+         // OP
+         DEBUG_DrawHex4(44, y, gpGlobals->g.lprgScriptEntry[idx].wOperation, color);
+
+         // Operands
+         DEBUG_DrawHex4(80, y, gpGlobals->g.lprgScriptEntry[idx].rgwOperand[0], color);
+         DEBUG_DrawHex4(116, y, gpGlobals->g.lprgScriptEntry[idx].rgwOperand[1], color);
+         DEBUG_DrawHex4(152, y, gpGlobals->g.lprgScriptEntry[idx].rgwOperand[2], color);
+      }
+
+      VIDEO_UpdateScreen(NULL);
+      PAL_ClearKeyState();
+
+      while (!SDL_TICKS_PASSED(SDL_GetTicks(), dwTime))
+      {
+         PAL_ProcessEvent();
+         if (g_InputState.dwKeyPress != 0) break;
+         SDL_Delay(5);
+      }
+      dwTime = SDL_GetTicks() + FRAME_TIME;
+
+      if (g_InputState.dwKeyPress & kKeyUp)
+      {
+         if (iCurrent > 0) iCurrent--;
+         if (iCurrent < iTop) iTop = iCurrent;
+      }
+      else if (g_InputState.dwKeyPress & kKeyDown)
+      {
+         if (iCurrent < gpGlobals->g.nScriptEntry - 1) iCurrent++;
+         if (iCurrent >= iTop + SCRIPT_LINES_PER_PAGE)
+            iTop = iCurrent - SCRIPT_LINES_PER_PAGE + 1;
+      }
+      else if (g_InputState.dwKeyPress & kKeyPgUp)
+      {
+         iCurrent -= SCRIPT_LINES_PER_PAGE;
+         if (iCurrent < 0) iCurrent = 0;
+         iTop = iCurrent - SCRIPT_LINES_PER_PAGE / 2;
+         if (iTop < 0) iTop = 0;
+      }
+      else if (g_InputState.dwKeyPress & kKeyPgDn)
+      {
+         iCurrent += SCRIPT_LINES_PER_PAGE;
+         if (iCurrent >= gpGlobals->g.nScriptEntry)
+            iCurrent = gpGlobals->g.nScriptEntry - 1;
+         iTop = iCurrent - SCRIPT_LINES_PER_PAGE / 2;
+         if (iTop < 0) iTop = 0;
+      }
+      else if (g_InputState.dwKeyPress & kKeyMenu)
+      {
+         break;
+      }
+   }
+
+   VIDEO_RestoreScreen(gpScreen);
+   VIDEO_UpdateScreen(NULL);
+}
+
+// ============================================================
 // Debug menu
 // ============================================================
 
-#define DEBUG_MENU_ITEMS 6
+#define DEBUG_MENU_ITEMS 7
 
 static const WCHAR g_rgDebugMenuLabels[DEBUG_MENU_ITEMS][3] = {
    { 0x5C0B, 0x8E64, 0 },  // 尋蹤
@@ -211,6 +422,7 @@ static const WCHAR g_rgDebugMenuLabels[DEBUG_MENU_ITEMS][3] = {
    { 0x4FE0, 0x5F71, 0 },  // 俠影
    { 0x8A66, 0x7149, 0 },  // 試煉
    { 0x5916, 0x5178, 0 },  // 外典
+   { 0x5929, 0x6A5F, 0 },  // 天機 (script viewer)
 };
 
 static const WCHAR g_rgSubLabels[3][3] = {
@@ -776,6 +988,14 @@ PAL_DebugMenu(
                VIDEO_RestoreScreen(gpScreen);
                VIDEO_UpdateScreen(NULL);
                PAL_DebugHackMenu();
+               fDone = TRUE;
+            }
+            break;
+            case 6: // 經卷 (script viewer)
+            {
+               VIDEO_RestoreScreen(gpScreen);
+               VIDEO_UpdateScreen(NULL);
+               PAL_DebugScriptViewer();
                fDone = TRUE;
             }
             break;
