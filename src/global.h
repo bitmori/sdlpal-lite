@@ -157,7 +157,7 @@ typedef enum tagMAGICFLAG
 typedef struct tagOBJECT_MAGIC
 {
    WORD         wMagicNumber;      // magic number, according to DATA.MKF #3
-   WORD         wReserved1;        // always zero
+   WORD         wSortOrder;        // menu sort priority (0 = sort by OBJ ID at end)
    WORD         wScriptOnSuccess;  // when magic succeed, execute script from here
    WORD         wScriptOnUse;      // when use this magic, execute script from here
    WORD         wReserved2;        // always zero

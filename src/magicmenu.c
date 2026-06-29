@@ -340,7 +340,7 @@ PAL_MagicSelectionMenuInit(
    }
 
    //
-   // Sort the array
+   // Sort the array by OBJ ID first, then apply insertions
    //
    for (i = 0; i < g_iNumMagic - 1; i++)
    {
@@ -361,6 +361,45 @@ PAL_MagicSelectionMenuInit(
       if (fCompleted)
       {
          break;
+      }
+   }
+
+   //
+   // Apply insertions: if wSortOrder != 0, move that magic before the target OBJ ID
+   // Process in reverse so multiple insertions before the same target stack in order
+   //
+   for (i = g_iNumMagic - 1; i >= 0; i--)
+   {
+      WORD wTarget = gpGlobals->g.rgObject[rgMagicItem[i].wMagic].magic.wSortOrder;
+      if (wTarget == 0) continue;
+
+      // Find target position
+      int dest = -1;
+      for (j = 0; j < g_iNumMagic; j++)
+      {
+         if (rgMagicItem[j].wMagic == wTarget)
+         {
+            dest = j;
+            break;
+         }
+      }
+      if (dest < 0 || dest == i) continue;
+
+      // Remove from current position and insert before dest
+      struct MAGICITEM tmp = rgMagicItem[i];
+      if (i < dest)
+      {
+         // Moving forward: shift [i+1..dest-1] left
+         for (j = i; j < dest - 1; j++)
+            rgMagicItem[j] = rgMagicItem[j + 1];
+         rgMagicItem[dest - 1] = tmp;
+      }
+      else
+      {
+         // Moving backward: shift [dest..i-1] right
+         for (j = i; j > dest; j--)
+            rgMagicItem[j] = rgMagicItem[j - 1];
+         rgMagicItem[dest] = tmp;
       }
    }
 
