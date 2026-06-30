@@ -26,6 +26,7 @@ typedef enum tagHACK_OP
    kHackOpAddItem,
    kHackOpDelItem,
    kHackOpExec,
+   kHackOpChangeLevelUpMagic,
 } HACK_OP;
 
 typedef struct tagHACK_INSTR
@@ -115,6 +116,12 @@ PAL_ParseInstruction(
       pInstr->args[2] = 0;
       pInstr->args[3] = 0;
       if (sscanf(pszLine, "%i %i %i %i", &pInstr->args[0], &pInstr->args[1], &pInstr->args[2], &pInstr->args[3]) < 1)
+         return FALSE;
+   }
+   else if (strcasecmp(cmd, "CHANGE_LEVELUP_MAGIC") == 0)
+   {
+      pInstr->op = kHackOpChangeLevelUpMagic;
+      if (sscanf(pszLine, "%i %i %i %i", &pInstr->args[0], &pInstr->args[1], &pInstr->args[2], &pInstr->args[3]) < 4)
          return FALSE;
    }
    else
@@ -313,6 +320,21 @@ PAL_ExecuteInstruction(
 
          gpGlobals->g.lprgScriptEntry[n - 2] = backup0;
          gpGlobals->g.lprgScriptEntry[n - 1] = backup1;
+      }
+      break;
+   }
+
+   case kHackOpChangeLevelUpMagic:
+   {
+      int row = pInstr->args[0];
+      int col = pInstr->args[1];
+      int level = pInstr->args[2];
+      int magic = pInstr->args[3];
+      if (row >= 0 && row < gpGlobals->g.nLevelUpMagic &&
+          col >= 0 && col < MAX_PLAYABLE_PLAYER_ROLES)
+      {
+         gpGlobals->g.lprgLevelUpMagic[row].m[col].wLevel = (WORD)level;
+         gpGlobals->g.lprgLevelUpMagic[row].m[col].wMagic = (WORD)magic;
       }
       break;
    }

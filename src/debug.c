@@ -450,18 +450,27 @@ DEBUG_DrawHex4(
 }
 
 static INT
-DEBUG_HexInput(
-   WORD    wDefault
+DEBUG_NumInput(
+   WORD        wDefault,
+   const char *pszHint,
+   int         nDigits,
+   int         iBase
 )
 {
    int iDigit = 0;
    BYTE rgDigits[4];
    DWORD dwTime;
+   const char hex[] = "0123456789ABCDEF";
+   int i;
+   int xStart;
 
-   rgDigits[0] = (wDefault >> 12) & 0xF;
-   rgDigits[1] = (wDefault >> 8) & 0xF;
-   rgDigits[2] = (wDefault >> 4) & 0xF;
-   rgDigits[3] = wDefault & 0xF;
+   for (i = nDigits - 1; i >= 0; i--)
+   {
+      rgDigits[i] = wDefault % iBase;
+      wDefault /= iBase;
+   }
+
+   xStart = 172 - nDigits * 5;
 
    VIDEO_BackupScreen(gpScreen);
    PAL_ClearKeyState();
@@ -469,21 +478,22 @@ DEBUG_HexInput(
 
    while (TRUE)
    {
-      const char hex[] = "0123456789ABCDEF";
-      int i;
-
       VIDEO_RestoreScreen(gpScreen);
       PAL_CreateSingleLineBox(PAL_XY(100, 80), 5, FALSE);
 
-      for (i = 0; i < 4; i++)
+      if (pszHint != NULL)
       {
-         BYTE color = (i == iDigit) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
-         DEBUG_DrawHexChar(120 + i * 10, 91, hex[rgDigits[i]], color);
+         PAL_DrawSmallText(pszHint, gpScreen, PAL_XY(108, 90), 0x4E);
       }
 
-      // Draw cursor under active digit
+      for (i = 0; i < nDigits; i++)
+      {
+         BYTE color = (i == iDigit) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+         DEBUG_DrawHexChar(xStart + i * 10, 94, hex[rgDigits[i]], color);
+      }
+
       PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
-         gpScreen, PAL_XY(120 + iDigit * 10, 101));
+         gpScreen, PAL_XY(xStart + iDigit * 10, 103));
 
       VIDEO_UpdateScreen(NULL);
       PAL_ClearKeyState();
@@ -498,24 +508,27 @@ DEBUG_HexInput(
 
       if (g_InputState.dwKeyPress & kKeyLeft)
       {
-         iDigit = (iDigit > 0) ? iDigit - 1 : 3;
+         iDigit = (iDigit > 0) ? iDigit - 1 : nDigits - 1;
       }
       else if (g_InputState.dwKeyPress & kKeyRight)
       {
-         iDigit = (iDigit < 3) ? iDigit + 1 : 0;
+         iDigit = (iDigit < nDigits - 1) ? iDigit + 1 : 0;
       }
       else if (g_InputState.dwKeyPress & kKeyUp)
       {
-         rgDigits[iDigit] = (rgDigits[iDigit] + 1) & 0xF;
+         rgDigits[iDigit] = (rgDigits[iDigit] + 1) % iBase;
       }
       else if (g_InputState.dwKeyPress & kKeyDown)
       {
-         rgDigits[iDigit] = (rgDigits[iDigit] - 1) & 0xF;
+         rgDigits[iDigit] = (rgDigits[iDigit] + iBase - 1) % iBase;
       }
       else if (g_InputState.dwKeyPress & kKeySearch)
       {
+         INT result = 0;
+         for (i = 0; i < nDigits; i++)
+            result = result * iBase + rgDigits[i];
          VIDEO_RestoreScreen(gpScreen);
-         return (rgDigits[0] << 12) | (rgDigits[1] << 8) | (rgDigits[2] << 4) | rgDigits[3];
+         return result;
       }
       else if (g_InputState.dwKeyPress & kKeyMenu)
       {
@@ -524,6 +537,9 @@ DEBUG_HexInput(
       }
    }
 }
+
+#define DEBUG_HexInput(def, hint) DEBUG_NumInput((def), (hint), 4, 16)
+#define DEBUG_DecInput(def, hint) DEBUG_NumInput((def), (hint), 2, 10)
 
 #define SCRIPT_LINES_PER_PAGE 14
 
@@ -695,7 +711,7 @@ DEBUG_ScriptView(
    int nTotal, i;
    INT *rgIndices;
 
-   iEntry = DEBUG_HexInput(0);
+   iEntry = DEBUG_HexInput(0, "\xe5\x9c\xb0\xe5\x9d\x80");
    if (iEntry < 0) return;
 
    if (iEntry >= gpGlobals->g.nScriptEntry)
@@ -721,7 +737,7 @@ DEBUG_ScriptSearch(
    int i, nFound;
    INT *rgIndices;
 
-   opVal = DEBUG_HexInput(0);
+   opVal = DEBUG_HexInput(0, "\xe6\x8c\x87\xe4\xbb\xa4");
    if (opVal < 0) return;
 
    rgIndices = (INT *)malloc(gpGlobals->g.nScriptEntry * sizeof(INT));
@@ -740,9 +756,164 @@ DEBUG_ScriptSearch(
    free(rgIndices);
 }
 
-static const WCHAR g_rgScriptSubLabels[2][3] = {
+static void
+DEBUG_LevelUpMagicView(
+   VOID
+)
+{
+   static const int rgColRole[] = { 0, 1, 2, 4 };
+   int iRow = 0, iCol = 0, iTop = 0;
+   int nRows = gpGlobals->g.nLevelUpMagic;
+   const int nCols = 4;
+   const int iColWidth = 80;
+   const int iFaceY = 4;
+   const int iHeaderH = 38;
+   const int iRowH = 12;
+   const int iVisibleRows = (200 - iHeaderH) / iRowH;
+   DWORD dwTime;
+
+   if (nRows <= 0) return;
+
+   VIDEO_BackupScreen(gpScreen);
+   PAL_ClearKeyState();
+   dwTime = SDL_GetTicks();
+
+   while (TRUE)
+   {
+      int i, r;
+
+      if (iRow < iTop) iTop = iRow;
+      if (iRow >= iTop + iVisibleRows) iTop = iRow - iVisibleRows + 1;
+
+      VIDEO_RestoreScreen(gpScreen);
+
+      PAL_CreateBoxWithShadow(PAL_XY(0, 0), 11, 18, 1, FALSE, 6);
+
+      for (r = 0; r < nCols; r++)
+      {
+         int role = rgColRole[r];
+         int x = r * iColWidth + (iColWidth - 32) / 2;
+         PAL_RLEBlitToSurface(
+            PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_PLAYERFACE_FIRST + role),
+            gpScreen, PAL_XY(x, iFaceY));
+
+         BYTE nameColor = (r == iCol) ? 0x8D : 0x1B;
+         const char *name = DEBUG_GetWord(gpGlobals->g.PlayerRoles.rgwName[role]);
+         PAL_DrawSmallText(name, gpScreen, PAL_XY(r * iColWidth + 4, 28), nameColor);
+      }
+
+      for (i = 0; i < iVisibleRows && (iTop + i) < nRows; i++)
+      {
+         int row = iTop + i;
+         int y = iHeaderH + i * iRowH;
+         BOOL bSelectedRow = (row == iRow);
+
+         for (r = 0; r < nCols; r++)
+         {
+            int role = rgColRole[r];
+            WORD wLevel = gpGlobals->g.lprgLevelUpMagic[row].m[role].wLevel;
+            WORD wMagic = gpGlobals->g.lprgLevelUpMagic[row].m[role].wMagic;
+            int x = r * iColWidth + 2;
+            char szBuf[64];
+            BOOL bSelected = (bSelectedRow && r == iCol);
+
+            if (wMagic == 0)
+            {
+               PAL_DrawSmallText("--", gpScreen, PAL_XY(x, y),
+                  bSelected ? 0x8D : 0x4E);
+               PAL_DrawSmallText(" " "\xe7\xa9\xba" " --", gpScreen, PAL_XY(x + 14, y),
+                  bSelected ? 0x8D : 0x4E);
+            }
+            else
+            {
+               sprintf(szBuf, "%02d", wLevel);
+               PAL_DrawSmallText(szBuf, gpScreen, PAL_XY(x, y),
+                  bSelected ? 0x8D : 0x2E);
+               const char *mname = DEBUG_GetWord(wMagic);
+               PAL_DrawSmallText(mname, gpScreen, PAL_XY(x + 14, y),
+                  bSelected ? 0x8D : 0x7D);
+            }
+         }
+      }
+
+      {
+         char szStatus[64];
+         sprintf(szStatus, "[%d/%d] R%d", iRow, nRows - 1, iCol);
+         PAL_DrawSmallText(szStatus, gpScreen, PAL_XY(270, 2), 0x4E);
+      }
+
+      VIDEO_UpdateScreen(NULL);
+      PAL_ClearKeyState();
+
+      while (!SDL_TICKS_PASSED(SDL_GetTicks(), dwTime))
+      {
+         PAL_ProcessEvent();
+         if (g_InputState.dwKeyPress != 0) break;
+         SDL_Delay(5);
+      }
+      dwTime = SDL_GetTicks() + FRAME_TIME;
+
+      if (g_InputState.dwKeyPress & kKeyMenu)
+         break;
+      else if (g_InputState.dwKeyPress & kKeyUp)
+         iRow = (iRow > 0) ? iRow - 1 : 0;
+      else if (g_InputState.dwKeyPress & kKeyDown)
+         iRow = (iRow < nRows - 1) ? iRow + 1 : iRow;
+      else if (g_InputState.dwKeyPress & kKeyLeft)
+         iCol = (iCol > 0) ? iCol - 1 : nCols - 1;
+      else if (g_InputState.dwKeyPress & kKeyRight)
+         iCol = (iCol < nCols - 1) ? iCol + 1 : 0;
+      else if (g_InputState.dwKeyPress & kKeyPgUp)
+         iRow = (iRow > iVisibleRows) ? iRow - iVisibleRows : 0;
+      else if (g_InputState.dwKeyPress & kKeyPgDn)
+      {
+         iRow += iVisibleRows;
+         if (iRow >= nRows) iRow = nRows - 1;
+      }
+      else if (g_InputState.dwKeyPress & kKeySearch)
+      {
+         int role = rgColRole[iCol];
+         LPLEVELUPMAGIC_ALL pRow = &gpGlobals->g.lprgLevelUpMagic[iRow];
+         WORD wOldLevel = pRow->m[role].wLevel;
+         WORD wOldMagic = pRow->m[role].wMagic;
+         INT val;
+
+         val = DEBUG_HexInput(wOldMagic, "\xe4\xbb\x99\xe8\xa1\x93" "ID");
+         if (val >= 0)
+         {
+            pRow->m[role].wMagic = (WORD)val;
+
+            if (val != 0)
+            {
+               val = DEBUG_DecInput(wOldLevel, "\xe7\xad\x89\xe7\xb4\x9a");
+               if (val >= 0)
+                  pRow->m[role].wLevel = (WORD)val;
+            }
+            else
+            {
+               pRow->m[role].wLevel = 0;
+            }
+
+            if (pRow->m[role].wMagic != wOldMagic || pRow->m[role].wLevel != wOldLevel)
+            {
+               UTIL_LogOutput(LOGLEVEL_DEBUG,
+                  "#CHANGE_LEVELUP_MAGIC %d %d %d 0x%X\n",
+                  iRow, role, pRow->m[role].wLevel, pRow->m[role].wMagic);
+            }
+         }
+
+         VIDEO_RestoreScreen(gpScreen);
+      }
+   }
+
+   VIDEO_RestoreScreen(gpScreen);
+   VIDEO_UpdateScreen(NULL);
+}
+
+static const WCHAR g_rgScriptSubLabels[3][3] = {
    { 0x67E5, 0x770B, 0 },  // 查看
    { 0x641C, 0x7D22, 0 },  // 搜索
+   { 0x7CBE, 0x9032, 0 },  // 精進
 };
 
 static void
@@ -751,23 +922,23 @@ PAL_DebugScriptViewer(
 )
 {
    int iSubItem = 0;
+   const int nItems = 3;
+   const int iBoxX = 55;
+   const int iBoxY = 100;
+   LPBOX lpMenuBox;
 
-   VIDEO_BackupScreen(gpScreen);
+   lpMenuBox = PAL_CreateBox(PAL_XY(iBoxX, iBoxY), nItems - 1, 1, 0, TRUE);
 
    while (TRUE)
    {
       int k;
-      VIDEO_RestoreScreen(gpScreen);
-      PAL_CreateBox(PAL_XY(100, 70), 1, 1, 0, FALSE);
 
-      for (k = 0; k < 2; k++)
+      for (k = 0; k < nItems; k++)
       {
          BYTE bColor = (k == iSubItem) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
-         PAL_DrawText(g_rgScriptSubLabels[k], PAL_XY(113, 83 + k * 18), bColor, TRUE, FALSE, FALSE);
+         PAL_DrawText(g_rgScriptSubLabels[k],
+            PAL_XY(iBoxX + 13, iBoxY + 13 + k * 18), bColor, TRUE, FALSE, FALSE);
       }
-
-      PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
-         gpScreen, PAL_XY(125, 93 + iSubItem * 18));
 
       VIDEO_UpdateScreen(NULL);
 
@@ -777,30 +948,30 @@ PAL_DebugScriptViewer(
          UTIL_Delay(1);
          if (g_InputState.dwKeyPress & (kKeyUp | kKeyLeft))
          {
-            iSubItem = (iSubItem > 0) ? iSubItem - 1 : 1;
+            iSubItem = (iSubItem > 0) ? iSubItem - 1 : nItems - 1;
             break;
          }
          else if (g_InputState.dwKeyPress & (kKeyDown | kKeyRight))
          {
-            iSubItem = (iSubItem < 1) ? iSubItem + 1 : 0;
+            iSubItem = (iSubItem < nItems - 1) ? iSubItem + 1 : 0;
             break;
          }
          else if (g_InputState.dwKeyPress & kKeyMenu)
          {
-            VIDEO_RestoreScreen(gpScreen);
+            PAL_DeleteBox(lpMenuBox);
             VIDEO_UpdateScreen(NULL);
             return;
          }
          else if (g_InputState.dwKeyPress & kKeySearch)
          {
-            VIDEO_RestoreScreen(gpScreen);
+            PAL_DeleteBox(lpMenuBox);
             VIDEO_UpdateScreen(NULL);
-            if (iSubItem == 0)
-               DEBUG_ScriptView();
-            else
-               DEBUG_ScriptSearch();
-            VIDEO_RestoreScreen(gpScreen);
-            VIDEO_UpdateScreen(NULL);
+            switch (iSubItem)
+            {
+            case 0: DEBUG_ScriptView(); break;
+            case 1: DEBUG_ScriptSearch(); break;
+            case 2: DEBUG_LevelUpMagicView(); break;
+            }
             return;
          }
       }
@@ -1391,8 +1562,6 @@ PAL_DebugMenu(
             break;
             case 6: // 經卷 (script viewer)
             {
-               VIDEO_RestoreScreen(gpScreen);
-               VIDEO_UpdateScreen(NULL);
                PAL_DebugScriptViewer();
                fDone = TRUE;
             }
