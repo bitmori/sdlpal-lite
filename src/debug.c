@@ -454,7 +454,8 @@ DEBUG_NumInput(
    WORD        wDefault,
    const char *pszHint,
    int         nDigits,
-   int         iBase
+   int         iBase,
+   const char *pszSuffix
 )
 {
    int iDigit = 0;
@@ -462,15 +463,13 @@ DEBUG_NumInput(
    DWORD dwTime;
    const char hex[] = "0123456789ABCDEF";
    int i;
-   int xStart;
+   int xStart = 152;
 
    for (i = nDigits - 1; i >= 0; i--)
    {
       rgDigits[i] = wDefault % iBase;
       wDefault /= iBase;
    }
-
-   xStart = 172 - nDigits * 5;
 
    VIDEO_BackupScreen(gpScreen);
    PAL_ClearKeyState();
@@ -479,7 +478,7 @@ DEBUG_NumInput(
    while (TRUE)
    {
       VIDEO_RestoreScreen(gpScreen);
-      PAL_CreateSingleLineBox(PAL_XY(100, 80), 5, FALSE);
+      PAL_CreateSingleLineBox(PAL_XY(100, 80), pszSuffix ? 6 : 5, FALSE);
 
       if (pszHint != NULL)
       {
@@ -490,6 +489,11 @@ DEBUG_NumInput(
       {
          BYTE color = (i == iDigit) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
          DEBUG_DrawHexChar(xStart + i * 10, 94, hex[rgDigits[i]], color);
+      }
+
+      if (pszSuffix != NULL)
+      {
+         PAL_DrawSmallText(pszSuffix, gpScreen, PAL_XY(xStart + nDigits * 10 + 4, 90), 0x4E);
       }
 
       PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
@@ -538,8 +542,8 @@ DEBUG_NumInput(
    }
 }
 
-#define DEBUG_HexInput(def, hint) DEBUG_NumInput((def), (hint), 4, 16)
-#define DEBUG_DecInput(def, hint) DEBUG_NumInput((def), (hint), 2, 10)
+#define DEBUG_HexInput(def, hint) DEBUG_NumInput((def), (hint), 4, 16, NULL)
+#define DEBUG_DecInput(def, hint, suffix) DEBUG_NumInput((def), (hint), 2, 10, (suffix))
 
 #define SCRIPT_LINES_PER_PAGE 14
 
@@ -885,7 +889,7 @@ DEBUG_LevelUpMagicView(
 
             if (val != 0)
             {
-               val = DEBUG_DecInput(wOldLevel, "\xe7\xad\x89\xe7\xb4\x9a");
+               val = DEBUG_DecInput(wOldLevel, "\xe7\xad\x89\xe7\xb4\x9a", NULL);
                if (val >= 0)
                   pRow->m[role].wLevel = (WORD)val;
             }
@@ -1513,24 +1517,20 @@ PAL_DebugMenu(
                PAL_SellMenu();
                fDone = TRUE;
                break;
-            case 2: // 藏真 (random shop)
+            case 2: // 藏真 (shop by ID)
             {
                int nStores = gpGlobals->g.nStore;
                if (nStores > 0)
                {
-                  int attempts = 0;
-                  gpGlobals->dwCash += 10000;
-                  while (attempts < 64)
+                  char szSuffix[16];
+                  sprintf(szSuffix, "/%d", nStores - 1);
+                  INT idx = DEBUG_DecInput(0, "\xe5\x95\x86\xe5\xba\x97", szSuffix);
+                  if (idx >= 0 && idx < nStores && gpGlobals->g.lprgStore[idx].rgwItems[0] != 0)
                   {
-                     int idx = RandomLong(0, nStores - 1);
-                     if (gpGlobals->g.lprgStore[idx].rgwItems[0] != 0)
-                     {
-                        VIDEO_RestoreScreen(gpScreen);
-                        VIDEO_UpdateScreen(NULL);
-                        PAL_BuyMenu((WORD)idx);
-                        break;
-                     }
-                     attempts++;
+                     gpGlobals->dwCash += 10000;
+                     VIDEO_RestoreScreen(gpScreen);
+                     VIDEO_UpdateScreen(NULL);
+                     PAL_BuyMenu((WORD)idx);
                   }
                }
                fDone = TRUE;
