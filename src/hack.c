@@ -25,6 +25,7 @@ typedef enum tagHACK_OP
    kHackOpAddMagic,
    kHackOpAddItem,
    kHackOpDelItem,
+   kHackOpExec,
 } HACK_OP;
 
 typedef struct tagHACK_INSTR
@@ -105,6 +106,15 @@ PAL_ParseInstruction(
       pInstr->op = kHackOpDelItem;
       pInstr->args[1] = 0; // 0 means delete all
       if (sscanf(pszLine, "%i %i", &pInstr->args[0], &pInstr->args[1]) < 1)
+         return FALSE;
+   }
+   else if (strcasecmp(cmd, "EXEC") == 0)
+   {
+      pInstr->op = kHackOpExec;
+      pInstr->args[1] = 0;
+      pInstr->args[2] = 0;
+      pInstr->args[3] = 0;
+      if (sscanf(pszLine, "%i %i %i %i", &pInstr->args[0], &pInstr->args[1], &pInstr->args[2], &pInstr->args[3]) < 1)
          return FALSE;
    }
    else
@@ -278,6 +288,32 @@ PAL_ExecuteInstruction(
       if (count <= 0)
          count = 99;
       PAL_AddItemToInventory((WORD)pInstr->args[0], -count);
+      break;
+   }
+
+   case kHackOpExec:
+   {
+      int n = gpGlobals->g.nScriptEntry;
+      if (n >= 2)
+      {
+         SCRIPTENTRY backup0 = gpGlobals->g.lprgScriptEntry[n - 2];
+         SCRIPTENTRY backup1 = gpGlobals->g.lprgScriptEntry[n - 1];
+
+         gpGlobals->g.lprgScriptEntry[n - 2].wOperation = (WORD)pInstr->args[0];
+         gpGlobals->g.lprgScriptEntry[n - 2].rgwOperand[0] = (WORD)pInstr->args[1];
+         gpGlobals->g.lprgScriptEntry[n - 2].rgwOperand[1] = (WORD)pInstr->args[2];
+         gpGlobals->g.lprgScriptEntry[n - 2].rgwOperand[2] = (WORD)pInstr->args[3];
+
+         gpGlobals->g.lprgScriptEntry[n - 1].wOperation = 0;
+         gpGlobals->g.lprgScriptEntry[n - 1].rgwOperand[0] = 0;
+         gpGlobals->g.lprgScriptEntry[n - 1].rgwOperand[1] = 0;
+         gpGlobals->g.lprgScriptEntry[n - 1].rgwOperand[2] = 0;
+
+         PAL_RunTriggerScript((WORD)(n - 2), 0);
+
+         gpGlobals->g.lprgScriptEntry[n - 2] = backup0;
+         gpGlobals->g.lprgScriptEntry[n - 1] = backup1;
+      }
       break;
    }
    }
