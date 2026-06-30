@@ -11,6 +11,226 @@ BOOL g_fDebugShowStatus = FALSE;
 BOOL g_fDebugShowGrid = FALSE;
 
 // ============================================================
+// Script OP descriptions (loaded from scriptor.txt)
+// ============================================================
+
+#define MAX_SCRIPTOR_ENTRIES 256
+#define MAX_SCRIPTOR_DESC    256
+
+static struct {
+   WORD  wOP;
+   char  szDesc[MAX_SCRIPTOR_DESC];
+} g_rgScriptor[MAX_SCRIPTOR_ENTRIES];
+static int g_nScriptor = 0;
+static BOOL g_fScriptorLoaded = FALSE;
+
+static void
+DEBUG_LoadScriptor(
+   VOID
+)
+{
+   FILE *fp;
+   char buf[256];
+
+   if (g_fScriptorLoaded) return;
+   g_fScriptorLoaded = TRUE;
+
+   fp = UTIL_OpenFileForMode("scriptor.txt", "r");
+   if (fp == NULL) return;
+
+   while (fgets(buf, sizeof(buf), fp) != NULL && g_nScriptor < MAX_SCRIPTOR_ENTRIES)
+   {
+      char *p = buf;
+      while (*p == ' ' || *p == '\t') p++;
+
+      size_t len = strlen(p);
+      while (len > 0 && (p[len-1] == '\n' || p[len-1] == '\r'))
+         p[--len] = '\0';
+
+      if (len == 0 || *p == ';') continue;
+
+      // Parse: XXXX=description
+      WORD wOP = (WORD)strtol(p, &p, 16);
+      if (*p != '=') continue;
+      p++;
+
+      g_rgScriptor[g_nScriptor].wOP = wOP;
+      strncpy(g_rgScriptor[g_nScriptor].szDesc, p, MAX_SCRIPTOR_DESC - 1);
+      g_rgScriptor[g_nScriptor].szDesc[MAX_SCRIPTOR_DESC - 1] = '\0';
+      g_nScriptor++;
+   }
+
+   fclose(fp);
+}
+
+static const char *
+DEBUG_GetWord(
+   WORD   wObjectID
+)
+{
+   static char szBuf[64];
+   LPCWSTR ws = PAL_GetWord(wObjectID);
+   int i = 0;
+
+   if (ws == NULL || ws[0] == 0)
+   {
+      szBuf[0] = '?';
+      szBuf[1] = '\0';
+      return szBuf;
+   }
+
+   while (*ws && i < (int)sizeof(szBuf) - 4)
+   {
+      wchar_t c = *ws++;
+      if (c < 0x80) {
+         szBuf[i++] = (char)c;
+      } else if (c < 0x800) {
+         szBuf[i++] = 0xC0 | (c >> 6);
+         szBuf[i++] = 0x80 | (c & 0x3F);
+      } else {
+         szBuf[i++] = 0xE0 | (c >> 12);
+         szBuf[i++] = 0x80 | ((c >> 6) & 0x3F);
+         szBuf[i++] = 0x80 | (c & 0x3F);
+      }
+   }
+   szBuf[i] = '\0';
+   return szBuf;
+}
+
+static const char *
+DEBUG_GetScriptorDesc(
+   WORD   wOP
+)
+{
+   int i;
+   for (i = 0; i < g_nScriptor; i++)
+   {
+      if (g_rgScriptor[i].wOP == wOP)
+         return g_rgScriptor[i].szDesc;
+   }
+   return NULL;
+}
+
+static const char *
+DEBUG_FormatScriptDesc(
+   const char *pszTemplate,
+   WORD        rgwOperand[3]
+)
+{
+   static char szResult[256];
+   int ri = 0;
+   const char *p = pszTemplate;
+
+   while (*p && ri < (int)sizeof(szResult) - 16)
+   {
+      if (*p == '%' && p[1] >= '1' && p[1] <= '3' && p[2] != '\0')
+      {
+         int argIdx = p[1] - '1';
+         char fmt = p[2];
+         WORD val = rgwOperand[argIdx];
+         p += 3;
+
+         switch (fmt)
+         {
+         case 'd':
+            ri += sprintf(szResult + ri, "%d", (SHORT)val);
+            break;
+         case 'X':
+            ri += sprintf(szResult + ri, "%04X", val);
+            break;
+         case 'b':
+            szResult[ri++] = val ? 'T' : 'F';
+            break;
+         case 'e':
+         {
+            // Inline enum: %1e{a,b,c} or %1e{0xB|a,b,c} — val selects by index
+            while (*p == ' ') p++;
+            if (*p == '{')
+            {
+               const char *start = ++p;
+               const char *end = strchr(start, '}');
+               if (end)
+               {
+                  int baseVal = 0;
+                  const char *seg = start;
+
+                  // Check for base offset: 0xNN| or NN|
+                  const char *pipe = seg;
+                  while (pipe < end && *pipe != '|' && *pipe != ',') pipe++;
+                  if (pipe < end && *pipe == '|')
+                  {
+                     baseVal = (int)strtol(seg, NULL, 0);
+                     seg = pipe + 1;
+                  }
+
+                  int ei = baseVal;
+                  BOOL found = FALSE;
+                  while (seg < end)
+                  {
+                     const char *comma = seg;
+                     while (comma < end && *comma != ',') comma++;
+                     if (ei == (int)val)
+                     {
+                        while (seg < comma && ri < (int)sizeof(szResult) - 2)
+                           szResult[ri++] = *seg++;
+                        found = TRUE;
+                        break;
+                     }
+                     ei++;
+                     seg = (comma < end) ? comma + 1 : end;
+                  }
+                  if (!found)
+                     ri += sprintf(szResult + ri, "%d", (int)val);
+                  p = end + 1;
+               }
+            }
+            break;
+         }
+         case 'w':
+         {
+            const char *name = DEBUG_GetWord(val);
+            while (*name && ri < (int)sizeof(szResult) - 2)
+               szResult[ri++] = *name++;
+            break;
+         }
+         case 'm':
+         {
+            LPCWSTR ws = PAL_GetMsg(val);
+            int nch = 0;
+            while (*ws && nch < 10 && ri < (int)sizeof(szResult) - 4)
+            {
+               wchar_t c = *ws++;
+               if (c < 0x80) {
+                  szResult[ri++] = (char)c;
+               } else if (c < 0x800) {
+                  szResult[ri++] = 0xC0 | (c >> 6);
+                  szResult[ri++] = 0x80 | (c & 0x3F);
+               } else {
+                  szResult[ri++] = 0xE0 | (c >> 12);
+                  szResult[ri++] = 0x80 | ((c >> 6) & 0x3F);
+                  szResult[ri++] = 0x80 | (c & 0x3F);
+               }
+               nch++;
+            }
+            break;
+         }
+         default:
+            szResult[ri++] = '%';
+            szResult[ri++] = '0' + argIdx + 1;
+            szResult[ri++] = fmt;
+            break;
+         }
+      }
+      else
+      {
+         szResult[ri++] = *p++;
+      }
+   }
+   szResult[ri] = '\0';
+   return szResult;
+}
+
+// ============================================================
 // Debug overlay drawing helpers
 // ============================================================
 
@@ -308,23 +528,18 @@ DEBUG_HexInput(
 #define SCRIPT_LINES_PER_PAGE 14
 
 static void
-PAL_DebugScriptViewer(
-   VOID
+DEBUG_ScriptBrowse(
+   INT    *rgIndices,
+   int     nCount,
+   BOOL    fReadOnly
 )
 {
-   INT iEntry;
-   int iCurrent, iTop;
+   int iCurrent = 0, iTop = 0;
    DWORD dwTime;
 
-   iEntry = DEBUG_HexInput(0);
-   if (iEntry < 0) return;
+   if (nCount <= 0) return;
 
-   if (iEntry >= gpGlobals->g.nScriptEntry)
-      iEntry = gpGlobals->g.nScriptEntry - 1;
-
-   iCurrent = iEntry;
-   iTop = iCurrent - SCRIPT_LINES_PER_PAGE / 2;
-   if (iTop < 0) iTop = 0;
+   DEBUG_LoadScriptor();
 
    VIDEO_BackupScreen(gpScreen);
    PAL_ClearKeyState();
@@ -339,27 +554,82 @@ PAL_DebugScriptViewer(
 
       for (i = 0; i < SCRIPT_LINES_PER_PAGE; i++)
       {
-         int idx = iTop + i;
-         int y = 14 + i * 13;
+         int ii = iTop + i;
+         int idx, y;
          BYTE color;
 
-         if (idx >= gpGlobals->g.nScriptEntry) break;
+         if (ii >= nCount) break;
+         idx = rgIndices[ii];
+         y = 14 + i * 13;
 
          if (gpGlobals->g.lprgScriptEntry[idx].wOperation == 0)
             color = 0x1A;
          else
-            color = (idx == iCurrent) ? 0x2D : 0x4F;
+            color = (ii == iCurrent) ? 0x2D : 0x4F;
 
-         // Address
-         DEBUG_DrawHex4(8, y, (WORD)idx, (idx == iCurrent) ? 0xFF : 0x8D);
+         DEBUG_DrawHex4(8, y, (WORD)idx, (ii == iCurrent) ? 0xFF : 0x8D);
 
-         // OP
-         DEBUG_DrawHex4(44, y, gpGlobals->g.lprgScriptEntry[idx].wOperation, color);
+         {
+            static const int colX[] = { 44, 80, 116, 152 };
+            WORD *pEntry = &gpGlobals->g.lprgScriptEntry[idx].wOperation;
+            int c;
+            for (c = 0; c < 4; c++)
+               DEBUG_DrawHex4(colX[c], y, pEntry[c], color);
+         }
+      }
 
-         // Operands
-         DEBUG_DrawHex4(80, y, gpGlobals->g.lprgScriptEntry[idx].rgwOperand[0], color);
-         DEBUG_DrawHex4(116, y, gpGlobals->g.lprgScriptEntry[idx].rgwOperand[1], color);
-         DEBUG_DrawHex4(152, y, gpGlobals->g.lprgScriptEntry[idx].rgwOperand[2], color);
+      // Description panel on the right
+      {
+         int idx = rgIndices[iCurrent];
+         LPSCRIPTENTRY pE = &gpGlobals->g.lprgScriptEntry[idx];
+         const char *desc = DEBUG_GetScriptorDesc(pE->wOperation);
+         const char *text;
+         BYTE textColor;
+
+         if (desc)
+         {
+            text = DEBUG_FormatScriptDesc(desc, pE->rgwOperand);
+            textColor = 0x3C;
+         }
+         else
+         {
+            text = "\xe6\x9c\xaa\xe7\x9f\xa5\xe8\x84\x9a\xe6\x9c\xac";
+            textColor = 0x1A;
+         }
+
+         PAL_CreateBoxWithShadow(PAL_XY(188, 2), (SCRIPT_LINES_PER_PAGE * 13 + 16) / 16 - 1, 6, 1, FALSE, 0);
+
+         // Word-wrap into buffer, max width ~118px
+         {
+            char wrapped[256];
+            const char *p = text;
+            int wi = 0, lineW = 0;
+            const int maxW = 118;
+
+            while (*p && wi < (int)sizeof(wrapped) - 2)
+            {
+               const unsigned char *u = (const unsigned char *)p;
+               int n;
+               uint32_t cp;
+               if (*u < 0x80) { cp = *u; n = 1; }
+               else if ((*u & 0xE0) == 0xC0) { cp = (*u & 0x1F) << 6 | (u[1] & 0x3F); n = 2; }
+               else if ((*u & 0xF0) == 0xE0) { cp = (*u & 0x0F) << 12 | (u[1] & 0x3F) << 6 | (u[2] & 0x3F); n = 3; }
+               else { cp = '?'; n = 1; }
+
+               int cw = PAL_SmallCharWidth((uint16_t)cp);
+               if (lineW + cw > maxW && lineW > 0)
+               {
+                  wrapped[wi++] = '\n';
+                  lineW = 0;
+               }
+               memcpy(wrapped + wi, p, n);
+               wi += n;
+               lineW += cw;
+               p += n;
+            }
+            wrapped[wi] = '\0';
+            PAL_DrawObjectDesc(wrapped, gpScreen, 195, 14, textColor);
+         }
       }
 
       VIDEO_UpdateScreen(NULL);
@@ -380,7 +650,7 @@ PAL_DebugScriptViewer(
       }
       else if (g_InputState.dwKeyPress & kKeyDown)
       {
-         if (iCurrent < gpGlobals->g.nScriptEntry - 1) iCurrent++;
+         if (iCurrent < nCount - 1) iCurrent++;
          if (iCurrent >= iTop + SCRIPT_LINES_PER_PAGE)
             iTop = iCurrent - SCRIPT_LINES_PER_PAGE + 1;
       }
@@ -394,10 +664,17 @@ PAL_DebugScriptViewer(
       else if (g_InputState.dwKeyPress & kKeyPgDn)
       {
          iCurrent += SCRIPT_LINES_PER_PAGE;
-         if (iCurrent >= gpGlobals->g.nScriptEntry)
-            iCurrent = gpGlobals->g.nScriptEntry - 1;
+         if (iCurrent >= nCount) iCurrent = nCount - 1;
          iTop = iCurrent - SCRIPT_LINES_PER_PAGE / 2;
          if (iTop < 0) iTop = 0;
+      }
+      else if (g_InputState.dwKeyPress & kKeySearch)
+      {
+         int idx = rgIndices[iCurrent];
+         LPSCRIPTENTRY e = &gpGlobals->g.lprgScriptEntry[idx];
+         UTIL_LogOutput(LOGLEVEL_INFO,
+            "#FIND_SCRIPT 0x%04X 0x%04X 0x%04X 0x%04X 0x%04X\n",
+            idx, e->wOperation, e->rgwOperand[0], e->rgwOperand[1], e->rgwOperand[2]);
       }
       else if (g_InputState.dwKeyPress & kKeyMenu)
       {
@@ -407,6 +684,127 @@ PAL_DebugScriptViewer(
 
    VIDEO_RestoreScreen(gpScreen);
    VIDEO_UpdateScreen(NULL);
+}
+
+static void
+DEBUG_ScriptView(
+   VOID
+)
+{
+   INT iEntry;
+   int nTotal, i;
+   INT *rgIndices;
+
+   iEntry = DEBUG_HexInput(0);
+   if (iEntry < 0) return;
+
+   if (iEntry >= gpGlobals->g.nScriptEntry)
+      iEntry = gpGlobals->g.nScriptEntry - 1;
+
+   nTotal = gpGlobals->g.nScriptEntry - iEntry;
+   rgIndices = (INT *)malloc(nTotal * sizeof(INT));
+   if (rgIndices == NULL) return;
+
+   for (i = 0; i < nTotal; i++)
+      rgIndices[i] = iEntry + i;
+
+   DEBUG_ScriptBrowse(rgIndices, nTotal, TRUE);
+   free(rgIndices);
+}
+
+static void
+DEBUG_ScriptSearch(
+   VOID
+)
+{
+   INT opVal;
+   int i, nFound;
+   INT *rgIndices;
+
+   opVal = DEBUG_HexInput(0);
+   if (opVal < 0) return;
+
+   rgIndices = (INT *)malloc(gpGlobals->g.nScriptEntry * sizeof(INT));
+   if (rgIndices == NULL) return;
+
+   nFound = 0;
+   for (i = 0; i < gpGlobals->g.nScriptEntry; i++)
+   {
+      if (gpGlobals->g.lprgScriptEntry[i].wOperation == (WORD)opVal)
+         rgIndices[nFound++] = i;
+   }
+
+   if (nFound > 0)
+      DEBUG_ScriptBrowse(rgIndices, nFound, TRUE);
+
+   free(rgIndices);
+}
+
+static const WCHAR g_rgScriptSubLabels[2][3] = {
+   { 0x67E5, 0x770B, 0 },  // 查看
+   { 0x641C, 0x7D22, 0 },  // 搜索
+};
+
+static void
+PAL_DebugScriptViewer(
+   VOID
+)
+{
+   int iSubItem = 0;
+
+   VIDEO_BackupScreen(gpScreen);
+
+   while (TRUE)
+   {
+      int k;
+      VIDEO_RestoreScreen(gpScreen);
+      PAL_CreateBox(PAL_XY(100, 70), 1, 1, 0, FALSE);
+
+      for (k = 0; k < 2; k++)
+      {
+         BYTE bColor = (k == iSubItem) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+         PAL_DrawText(g_rgScriptSubLabels[k], PAL_XY(113, 83 + k * 18), bColor, TRUE, FALSE, FALSE);
+      }
+
+      PAL_RLEBlitToSurface(PAL_SpriteGetFrame(gpSpriteUI, SPRITENUM_CURSOR),
+         gpScreen, PAL_XY(125, 93 + iSubItem * 18));
+
+      VIDEO_UpdateScreen(NULL);
+
+      PAL_ClearKeyState();
+      while (TRUE)
+      {
+         UTIL_Delay(1);
+         if (g_InputState.dwKeyPress & (kKeyUp | kKeyLeft))
+         {
+            iSubItem = (iSubItem > 0) ? iSubItem - 1 : 1;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & (kKeyDown | kKeyRight))
+         {
+            iSubItem = (iSubItem < 1) ? iSubItem + 1 : 0;
+            break;
+         }
+         else if (g_InputState.dwKeyPress & kKeyMenu)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            return;
+         }
+         else if (g_InputState.dwKeyPress & kKeySearch)
+         {
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            if (iSubItem == 0)
+               DEBUG_ScriptView();
+            else
+               DEBUG_ScriptSearch();
+            VIDEO_RestoreScreen(gpScreen);
+            VIDEO_UpdateScreen(NULL);
+            return;
+         }
+      }
+   }
 }
 
 // ============================================================
