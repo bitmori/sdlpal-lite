@@ -13,19 +13,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install SDL2
         run: brew install sdl2
-      - name: Build and bundle
-        run: |
-          make
-          mkdir -p dist
-          cp sdlpal dist/
-          SDL_DYLIB=$(otool -L sdlpal | grep libSDL2 | awk '{print $1}')
-          cp "$SDL_DYLIB" dist/
-          install_name_tool -change "$SDL_DYLIB" @executable_path/$(basename "$SDL_DYLIB") dist/sdlpal
+      - name: Build
+        run: make
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: sdlpal-macos-arm64
-          path: dist/
+          path: sdlpal
 
   build-windows:
     runs-on: windows-latest
