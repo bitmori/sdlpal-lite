@@ -1356,9 +1356,7 @@ PAL_ShowDialogText(
                }
                lpszText++;
                break;
-#if 0
-			/* Not used */
-			case '\'':
+            case '\'':
                //
                // Set the font color to Red
                //
@@ -1372,7 +1370,6 @@ PAL_ShowDialogText(
                }
                lpszText++;
                break;
-#endif
             case '\"':
                //
                // Set the font color to Yellow
