@@ -1277,7 +1277,10 @@ PAL_ShowDialogText(
 		 int        i, w = wcslen(lpszText), len = 0;
 
 		 for (i = 0; i < w; i++)
+		 {
+            if (lpszText[i] == L'\'' || lpszText[i] == L'-' || lpszText[i] == L'\"') continue;
             len += PAL_CharWidth(lpszText[i]) >> 3;
+		 }
          //
          // Create the window box
          //
@@ -1291,10 +1294,23 @@ PAL_ShowDialogText(
          rect.h = 64;
 
          //
-         // Show the text on the screen
+         // Show the text on the screen with color markup support
          //
          pos = PAL_XY(PAL_X(pos) + 8 + ((len & 1) << 2), PAL_Y(pos) + 10);
-         PAL_DrawText(lpszText, pos, 0, FALSE, FALSE, FALSE);
+         {
+            BYTE bColor = 0;
+            int cx = PAL_X(pos);
+            WCHAR ch[2] = { 0, 0 };
+            for (i = 0; i < w; i++)
+            {
+               if (lpszText[i] == L'\'') { bColor = (bColor == FONT_COLOR_RED) ? 0 : FONT_COLOR_RED; continue; }
+               if (lpszText[i] == L'-')  { bColor = (bColor == FONT_COLOR_CYAN) ? 0 : FONT_COLOR_CYAN; continue; }
+               if (lpszText[i] == L'\"') { bColor = (bColor == FONT_COLOR_YELLOW) ? 0 : FONT_COLOR_YELLOW; continue; }
+               ch[0] = lpszText[i];
+               PAL_DrawText(ch, PAL_XY(cx, PAL_Y(pos)), bColor, FALSE, FALSE, FALSE);
+               cx += PAL_CharWidth(lpszText[i]);
+            }
+         }
          VIDEO_UpdateScreen(&rect);
 
          PAL_DialogWaitForKeyWithMaximumSeconds(1.4);
@@ -1356,9 +1372,7 @@ PAL_ShowDialogText(
                }
                lpszText++;
                break;
-#if 0
-			/* Not used */
-			case '\'':
+            case '\'':
                //
                // Set the font color to Red
                //
@@ -1372,7 +1386,6 @@ PAL_ShowDialogText(
                }
                lpszText++;
                break;
-#endif
             case '\"':
                //
                // Set the font color to Yellow
