@@ -9,6 +9,7 @@
 BOOL g_fDebugShowEvents = FALSE;
 BOOL g_fDebugShowStatus = FALSE;
 BOOL g_fDebugShowGrid = FALSE;
+BOOL g_fDebugLockParty = FALSE;
 
 // ============================================================
 // Script OP descriptions (loaded from scriptor.txt)
@@ -1115,6 +1116,7 @@ PAL_DebugPartyEdit(
 )
 {
    int iCurrent = 0;
+   const int nItems = MAX_PLAYER_ROLES + 1;
 
    VIDEO_BackupScreen(gpScreen);
 
@@ -1123,7 +1125,7 @@ PAL_DebugPartyEdit(
       int i;
       VIDEO_RestoreScreen(gpScreen);
 
-      PAL_CreateBox(PAL_XY(20, 30), MAX_PLAYER_ROLES - 1, 11, 1, FALSE);
+      PAL_CreateBox(PAL_XY(20, 30), MAX_PLAYER_ROLES, 11, 1, FALSE);
 
       for (i = 0; i < MAX_PLAYER_ROLES; i++)
       {
@@ -1143,6 +1145,16 @@ PAL_DebugPartyEdit(
             PAL_XY(x + 145, y + 4), kNumColorCyan, kNumAlignRight);
       }
 
+      {
+         int x = 40, y = 48 + MAX_PLAYER_ROLES * 18;
+         BYTE bColor = (iCurrent == MAX_PLAYER_ROLES) ? MENUITEM_COLOR_SELECTED : MENUITEM_COLOR;
+         if (g_fDebugLockParty) bColor = MENUITEM_COLOR_CONFIRMED;
+         PAL_DrawSmallText("\xe9\x8e\x96\xe9\x9a\x8a", gpScreen, PAL_XY(x, y + 4),
+            bColor);
+         PAL_DrawSmallText(g_fDebugLockParty ? "ON" : "OFF", gpScreen,
+            PAL_XY(x + 30, y + 4), bColor);
+      }
+
       VIDEO_UpdateScreen(NULL);
 
       PAL_ClearKeyState();
@@ -1152,31 +1164,44 @@ PAL_DebugPartyEdit(
          if (g_InputState.dwKeyPress & kKeyUp)
          {
             iCurrent--;
-            if (iCurrent < 0) iCurrent = MAX_PLAYER_ROLES - 1;
+            if (iCurrent < 0) iCurrent = nItems - 1;
             break;
          }
          else if (g_InputState.dwKeyPress & kKeyDown)
          {
             iCurrent++;
-            if (iCurrent >= MAX_PLAYER_ROLES) iCurrent = 0;
+            if (iCurrent >= nItems) iCurrent = 0;
             break;
          }
          else if (g_InputState.dwKeyPress & kKeyLeft)
          {
-            gpGlobals->g.PlayerRoles.rgwSpriteNum[iCurrent]--;
-            PAL_SetLoadFlags(kLoadPlayerSprite);
+            if (iCurrent < MAX_PLAYER_ROLES)
+            {
+               gpGlobals->g.PlayerRoles.rgwSpriteNum[iCurrent]--;
+               PAL_SetLoadFlags(kLoadPlayerSprite);
+            }
             break;
          }
          else if (g_InputState.dwKeyPress & kKeyRight)
          {
-            gpGlobals->g.PlayerRoles.rgwSpriteNum[iCurrent]++;
-            PAL_SetLoadFlags(kLoadPlayerSprite);
+            if (iCurrent < MAX_PLAYER_ROLES)
+            {
+               gpGlobals->g.PlayerRoles.rgwSpriteNum[iCurrent]++;
+               PAL_SetLoadFlags(kLoadPlayerSprite);
+            }
             break;
          }
          else if (g_InputState.dwKeyPress & kKeySearch)
          {
-            DEBUG_TogglePartyMember((WORD)iCurrent);
-            PAL_SetLoadFlags(kLoadPlayerSprite);
+            if (iCurrent < MAX_PLAYER_ROLES)
+            {
+               DEBUG_TogglePartyMember((WORD)iCurrent);
+               PAL_SetLoadFlags(kLoadPlayerSprite);
+            }
+            else
+            {
+               g_fDebugLockParty = !g_fDebugLockParty;
+            }
             break;
          }
          else if (g_InputState.dwKeyPress & kKeyMenu)

@@ -2084,6 +2084,7 @@ PAL_InterpretInstruction(
       //
       // Set the player party
       //
+      if (g_fDebugLockParty) break;
       gpGlobals->wMaxPartyMemberIndex = 0;
       {
          WORD members[4] = {

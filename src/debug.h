@@ -23,6 +23,7 @@ PAL_DebugOverlay(
 extern BOOL g_fDebugShowEvents;
 extern BOOL g_fDebugShowStatus;
 extern BOOL g_fDebugShowGrid;
+extern BOOL g_fDebugLockParty;
 
 PAL_C_LINKAGE_END
 
